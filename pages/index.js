@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -65,7 +66,7 @@ export default function Home() {
       {/* Main Content */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
         {/* Logo */}
-        <img src="/logo.png" alt="Logo" className="mb-4" style={{ width: '160px', height: '160px' }} />
+        <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
         {/* Title */}
         <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
