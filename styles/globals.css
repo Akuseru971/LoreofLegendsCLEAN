@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optionnel : tu peux ajouter des styles custom ici */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'serif';
+  background-color: black;
+}
+
+.lore-box {
+  background-color: rgba(0, 0, 0, 1); /* noir sans transparence */
+}
+
+/* Popup fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.popup-animate {
+  animation: fadeIn 0.3s ease-out;
+}
+
+body {
+  background-color: black;
+  color: white;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
+}
