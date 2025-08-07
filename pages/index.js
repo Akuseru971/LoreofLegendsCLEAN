@@ -42,15 +42,24 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [lore]);
 
-  const handleCheckout = async () => {
-    try {
-      console.log('➡️ Demarrage Stripe Checkout…');
-      const stripe = await stripePromise;
-      if (!stripe) {
-        console.error('❌ Stripe non initialisé. Vérifie NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.');
-        alert('Stripe non initialisé. Vérifie la clé publique côté client.');
-        return;
-      }
+const handleCheckout = async () => {
+  const stripe = await stripePromise;
+
+  const response = await fetch('/api/checkout-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pseudo }), // send pseudo (and email if you have it)
+  });
+
+  const data = await response.json();
+
+  if (response.ok && data?.id) {
+    await stripe.redirectToCheckout({ sessionId: data.id });
+  } else {
+    console.error('Failed to create checkout session:', data?.error || data);
+    alert('Payment error: ' + (data?.error || 'Unknown error'));
+  }
+};
 
       const response = await fetch('/api/checkout-session', { method: 'POST' });
       if (!response.ok) {
