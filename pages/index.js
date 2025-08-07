@@ -43,10 +43,41 @@ export default function Home() {
   }, [lore]);
 
   const handleCheckout = async () => {
-    const stripe = await stripePromise;
-    const response = await fetch('/api/checkout-session', { method: 'POST' });
-    const session = await response.json();
-    await stripe.redirectToCheckout({ sessionId: session.id });
+    try {
+      console.log('➡️ Demarrage Stripe Checkout…');
+      const stripe = await stripePromise;
+      if (!stripe) {
+        console.error('❌ Stripe non initialisé. Vérifie NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.');
+        alert('Stripe non initialisé. Vérifie la clé publique côté client.');
+        return;
+      }
+
+      const response = await fetch('/api/checkout-session', { method: 'POST' });
+      if (!response.ok) {
+        const txt = await response.text();
+        console.error('❌ Erreur réseau/serveur:', txt);
+        alert('Erreur lors de la création de la session de paiement.');
+        return;
+      }
+
+      const session = await response.json();
+      console.log('✅ Session Stripe reçue:', session);
+
+      if (!session?.id) {
+        console.error('❌ session.id manquant:', session);
+        alert('Session Stripe invalide (pas d’ID).');
+        return;
+      }
+
+      const { error } = await stripe.redirectToCheckout({ sessionId: session.id });
+      if (error) {
+        console.error('❌ redirectToCheckout error:', error);
+        alert(error.message || 'Redirection Stripe échouée.');
+      }
+    } catch (e) {
+      console.error('❌ handleCheckout exception:', e);
+      alert('Impossible d’ouvrir Stripe. Regarde la console pour les détails.');
+    }
   };
 
   return (
