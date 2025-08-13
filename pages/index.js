@@ -62,13 +62,11 @@ export default function Home() {
         return;
       }
 
-      // 1) essai standard
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
 
         console.warn('redirectToCheckout error, will fallback:', error);
-        // 2) fallback via URL si dispo
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -77,7 +75,6 @@ export default function Home() {
         return;
       }
 
-      // pas d’id ? on tente l’URL si Stripe la renvoie
       if (data?.url) {
         window.location.href = data.url;
         return;
@@ -96,33 +93,24 @@ export default function Home() {
         <title>Lore of Legends</title>
       </Head>
 
-      {/* Charge Stripe.js explicitement */}
       <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
-      {/* Background video */}
       <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
         <source src="/background.mp4" type="video/mp4" />
       </video>
 
-      {/* Overlay */}
       <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
 
-      {/* Main Content */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
-        {/* Logo */}
         <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-6 text-white lore-title">
-          Generate your Runeterra Lore
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
 
-        {/* Form */}
         <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
           <select
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
-            className="h-14 p-3 rounded w-full bg-white text-black"
+            className="h-14 p-3 rounded-lg w-full bg-white text-black"
           >
             <option>Man</option>
             <option>Woman</option>
@@ -134,13 +122,13 @@ export default function Home() {
             placeholder="Enter your Summoner Name"
             value={pseudo}
             onChange={(e) => setPseudo(e.target.value)}
-            className="h-14 p-3 rounded w-full text-black"
+            className="h-14 p-3 rounded-lg w-full text-black"
           />
 
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="h-14 p-3 rounded w-full bg-white text-black"
+            className="h-14 p-3 rounded-lg w-full bg-white text-black"
           >
             <option>Top</option>
             <option>Mid</option>
@@ -151,21 +139,19 @@ export default function Home() {
 
           <button
             onClick={handleGenerate}
-            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded w-full"
+            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg w-full"
           >
             {loading ? 'Generating...' : 'Generate My Lore'}
           </button>
         </div>
 
-        {/* Lore Output */}
         {lore && (
           <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
             <div className="lore-box bg-black text-white p-6 rounded-lg max-w-xl w-full text-center text-md leading-relaxed shadow-lg mb-6">
-              {/* Ajout de la classe lore-text, rien d'autre */}
-              <span className="lore-text">{displayedLore}</span>
+              <span className="whitespace-pre-line">{displayedLore}</span>
             </div>
             <button
-              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded"
+              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg"
               onClick={() => setShowPopup(true)}
             >
               Generate your Lore Video
@@ -173,7 +159,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Popup */}
         {showPopup && (
           <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
             <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative">
@@ -183,21 +168,19 @@ export default function Home() {
               >
                 ✖
               </button>
-              <h2 className="text-xl font-bold mb-4 text-center lore-title">
-                Your Lore is ready
-              </h2>
+              <h2 className="text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
               <div className="mb-4">
                 <iframe
                   src="https://www.tiktok.com/embed/v2/7529586683185040662"
                   width="100%"
                   height="400"
                   allowFullScreen
-                  className="rounded"
+                  className="rounded-lg"
                 />
               </div>
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded text-lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg"
               >
                 Purchase your Lore Video
               </button>
