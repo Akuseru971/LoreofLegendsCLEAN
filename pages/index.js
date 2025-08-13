@@ -74,15 +74,23 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!lore) return;
-    let i = 0;
-    const it = setInterval(() => {
-      setDisplayedLore((prev) => prev + lore.charAt(i));
-      i++;
-      if (i >= lore.length) clearInterval(it);
-    }, 12);
-    return () => clearInterval(it);
-  }, [lore]);
+  if (!lore) return;
+
+  // Ajouter un saut de ligne après chaque 10 mots
+  const words = lore.split(' ');
+  const formattedLore = words.map((word, index) =>
+    (index + 1) % 10 === 0 ? word + '\n' : word
+  ).join(' ');
+
+  let i = 0;
+  const it = setInterval(() => {
+    setDisplayedLore((prev) => prev + formattedLore.charAt(i));
+    i++;
+    if (i >= formattedLore.length) clearInterval(it);
+  }, 12);
+  
+  return () => clearInterval(it);
+}, [lore]);
 
   const handleCheckout = async () => {
     try {
