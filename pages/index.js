@@ -217,35 +217,34 @@ export default function Home() {
           </div>
         )}
 
-        {/* Popup */}
-        {showPopup && (
-          <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative">
-              <button
-                className="absolute top-2 right-2 text-white text-xl"
-                onClick={() => setShowPopup(false)}
-              >
-                ✖
-              </button>
-              <h2 className="text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
-              <div className="mb-4">
-                <iframe
-                  src="https://www.tiktok.com/embed/v2/7529586683185040662"
-                  width="100%"
-                  height="400"
-                  allowFullScreen
-                  className="rounded"
-                />
-              </div>
-              <button
-                onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
-              >
-                Purchase your Lore Video
-              </button>
-            </div>
-          </div>
-        )}
+       {showPopup && (
+  <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50 px-4">
+    <div className="bg-gray-900 text-white p-4 rounded-lg w-full max-w-xl md:w-fit relative max-h-screen overflow-y-auto">
+      <button
+        className="absolute top-2 right-2 text-white text-xl"
+        onClick={() => setShowPopup(false)}
+      >
+        ✖
+      </button>
+      <h2 className="text-lg md:text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
+      <div className="mb-4">
+        <iframe
+          src="https://www.tiktok.com/embed/v2/7529586683185040662"
+          width="100%"
+          height="250"
+          allowFullScreen
+          className="rounded"
+        />
+      </div>
+      <button
+        onClick={handleCheckout}
+        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+      >
+        Purchase your Lore Video
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
