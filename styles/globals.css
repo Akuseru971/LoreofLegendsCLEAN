@@ -1,45 +1,45 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ----- STYLES EXISTANTS (conserve ce que tu as déjà en haut du fichier) ----- */
+/* … */
 
-/* Optionnel : tu peux ajouter des styles custom ici */
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: 'serif';
-  background-color: black;
+/* ----- LORE DARK FANTASY ----- */
+
+.lore-text {
+  /* Choix de police : Cinzel (titres) / Cormorant Garamond (corps) */
+  font-family: 'Cormorant Garamond', 'Cinzel', serif;
+
+  /* Look poétique & lisible */
+  font-size: 1.125rem;          /* ~18px ; ajuste si tu veux */
+  line-height: 1.85;
+  letter-spacing: 0.4px;
+
+  /* Argenté doux + lueur subtile */
+  color: #e4e4e4;
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.06),
+    0 0 20px rgba(180, 200, 255, 0.05);
+
+  /* Pour des blocs propres */
+  white-space: pre-line;        /* respecter les retours à la ligne */
 }
 
-.lore-box {
-  background-color: rgba(0, 0, 0, 1); /* noir sans transparence */
+/* Lettrine (première lettre stylisée) */
+.lore-text::first-letter {
+  font-family: 'Cinzel', serif;
+  float: left;
+  font-size: 2.8em;
+  line-height: 0.9;
+  padding-right: 10px;
+  padding-top: 6px;
+  color: #f0efe9;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.12),
+    0 0 24px rgba(200, 200, 255, 0.12);
 }
 
-/* Popup fade-in animation */
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+/* Optionnel : un fin séparateur entre les répliques si besoin
+.lore-text p + p {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
-
-.popup-animate {
-  animation: fadeIn 0.3s ease-out;
-}
-
-body {
-  background-color: black;
-  color: white;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out both;
-}
+*/
