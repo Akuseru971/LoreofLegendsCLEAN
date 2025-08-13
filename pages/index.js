@@ -79,7 +79,7 @@ export default function Home() {
   // Ajouter un saut de ligne après chaque 10 mots
   const words = lore.split(' ');
   const formattedLore = words.map((word, index) =>
-    (index + 1) % 10 === 0 ? word + '\n' : word
+    (index + 1) % 11 === 0 ? word + '\n' : word
   ).join(' ');
 
   let i = 0;
