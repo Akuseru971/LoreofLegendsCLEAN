@@ -35,57 +35,51 @@ export default function Home() {
     const interval = setInterval(() => {
       setDisplayedLore((prev) => prev + lore.charAt(index));
       index++;
-      if (index >= lore.length) {
-        clearInterval(interval);
-      }
+      if (index >= lore.length) clearInterval(interval);
     }, 12);
     return () => clearInterval(interval);
   }, [lore]);
 
-const handleCheckout = async () => {
-  const stripe = await stripePromise;
+  const handleCheckout = async () => {
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) {
+        alert('Stripe not initialized – check NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+        return;
+      }
 
-  const response = await fetch('/api/checkout-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pseudo }), // send pseudo (and email if you have it)
-  });
+      const response = await fetch('/api/checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pseudo,
+          genre,
+          role,
+          lore: displayedLore, // ou lore si tu préfères le texte complet d’un coup
+        }),
+      });
 
-  const data = await response.json();
+      const data = await response.json();
 
-  if (response.ok && data?.id) {
-    await stripe.redirectToCheckout({ sessionId: data.id });
-  } else {
-    console.error('Failed to create checkout session:', data?.error || data);
-    alert('Payment error: ' + (data?.error || 'Unknown error'));
-  }
-};
-
-      const response = await fetch('/api/checkout-session', { method: 'POST' });
       if (!response.ok) {
-        const txt = await response.text();
-        console.error('❌ Erreur réseau/serveur:', txt);
-        alert('Erreur lors de la création de la session de paiement.');
+        console.error('checkout-session 500:', data);
+        alert(data.error || 'Checkout failed (server).');
         return;
       }
 
-      const session = await response.json();
-      console.log('✅ Session Stripe reçue:', session);
-
-      if (!session?.id) {
-        console.error('❌ session.id manquant:', session);
-        alert('Session Stripe invalide (pas d’ID).');
+      if (!data?.id) {
+        alert('No checkout session returned.');
         return;
       }
 
-      const { error } = await stripe.redirectToCheckout({ sessionId: session.id });
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
       if (error) {
-        console.error('❌ redirectToCheckout error:', error);
-        alert(error.message || 'Redirection Stripe échouée.');
+        console.error('Stripe redirect error:', error);
+        alert(error.message || 'Stripe redirect failed');
       }
-    } catch (e) {
-      console.error('❌ handleCheckout exception:', e);
-      alert('Impossible d’ouvrir Stripe. Regarde la console pour les détails.');
+    } catch (err) {
+      console.error('handleCheckout error:', err);
+      alert('Unexpected error starting checkout.');
     }
   };
 
