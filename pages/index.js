@@ -1,19 +1,10 @@
-// pages/index.js
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Stripe helper: évite d'évaluer la clé trop tôt et garantit un seul chargement
-let stripePromise;
-const getStripe = () => {
-  if (!stripePromise) {
-    const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
-    stripePromise = loadStripe(pk);
-  }
-  return stripePromise;
-};
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
@@ -41,74 +32,65 @@ export default function Home() {
 
   useEffect(() => {
     if (!lore) return;
-    let index = 0;
-    const interval = setInterval(() => {
-      setDisplayedLore((prev) => prev + lore.charAt(index));
-      index++;
-      if (index >= lore.length) clearInterval(interval);
+    let i = 0;
+    const it = setInterval(() => {
+      setDisplayedLore((prev) => prev + lore.charAt(i));
+      i++;
+      if (i >= lore.length) clearInterval(it);
     }, 12);
-    return () => clearInterval(interval);
+    return () => clearInterval(it);
   }, [lore]);
 
   const handleCheckout = async () => {
     try {
-      // 1) Vérifier la clé publique côté client
-      const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-      if (!pk) {
-        alert('Stripe: clé publique manquante (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).');
-        console.error('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-        return;
-      }
-
-      // 2) S’assurer que Stripe.js est bien chargé
-      const stripe = await getStripe();
+      // 1) S’assurer que Stripe.js est bien chargé
+      const stripe = await stripePromise;
       if (!stripe) {
-        alert('Stripe.js ne s’est pas initialisé correctement.');
-        console.error('Stripe instance is null');
+        alert('Stripe n’a pas pu être chargé. Désactive un éventuel bloqueur et réessaie.');
         return;
       }
 
-      // 3) Créer la session côté serveur (POST obligatoire)
+      // 2) Créer la session sur notre API
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo }), // on envoie le pseudo si tu veux l’utiliser côté serveur
       });
 
+      // Gestion des erreurs réseau/API
       if (!resp.ok) {
         const txt = await resp.text();
-        console.error('checkout-session non-OK:', resp.status, txt);
-        alert(`Erreur serveur Stripe (${resp.status}). Regarde la console.`);
+        console.error('API checkout-session non OK:', resp.status, txt);
+        alert(`Erreur serveur (${resp.status}). Regarde la console.`);
         return;
       }
 
       const data = await resp.json();
       if (!data?.id) {
-        console.error('Réponse checkout-session sans id:', data);
-        alert('Réponse Stripe invalide (pas de session.id).');
+        console.error('Réponse API invalide (pas de session.id):', data);
+        alert('Session Stripe invalide.');
         return;
       }
 
-      // 4) Redirection Checkout
+      // 3) Redirection Stripe
       const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
       if (error) {
         console.error('redirectToCheckout error:', error);
-        alert(error.message || 'Impossible d’ouvrir Stripe Checkout.');
+        alert(error.message || 'Redirection Stripe échouée.');
       }
     } catch (e) {
       console.error('handleCheckout exception:', e);
-      alert('Unexpected error starting checkout.');
+      alert('Impossible d’ouvrir Stripe. Vérifie bloqueurs / réseau.');
     }
   };
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
-      {/* Charge explicitement Stripe.js dès que possible */}
-      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
-
       <Head>
         <title>Lore of Legends</title>
       </Head>
+
+      {/* Charge Stripe.js explicitement */}
+      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
       {/* Background video */}
       <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
