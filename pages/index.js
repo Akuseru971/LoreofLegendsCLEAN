@@ -42,46 +42,43 @@ export default function Home() {
   }, [lore]);
 
   const handleCheckout = async () => {
-    try {
-      // 1) S’assurer que Stripe.js est bien chargé
-      const stripe = await stripePromise;
-      if (!stripe) {
-        alert('Stripe n’a pas pu être chargé. Désactive un éventuel bloqueur et réessaie.');
-        return;
-      }
-
-      // 2) Créer la session sur notre API
-      const resp = await fetch('/api/checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      // Gestion des erreurs réseau/API
-      if (!resp.ok) {
-        const txt = await resp.text();
-        console.error('API checkout-session non OK:', resp.status, txt);
-        alert(`Erreur serveur (${resp.status}). Regarde la console.`);
-        return;
-      }
-
-      const data = await resp.json();
-      if (!data?.id) {
-        console.error('Réponse API invalide (pas de session.id):', data);
-        alert('Session Stripe invalide.');
-        return;
-      }
-
-      // 3) Redirection Stripe
-      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-      if (error) {
-        console.error('redirectToCheckout error:', error);
-        alert(error.message || 'Redirection Stripe échouée.');
-      }
-    } catch (e) {
-      console.error('handleCheckout exception:', e);
-      alert('Impossible d’ouvrir Stripe. Vérifie bloqueurs / réseau.');
+  try {
+    const stripe = await stripePromise;
+    if (!stripe) {
+      alert('Stripe n’a pas pu être initialisé.');
+      return;
     }
-  };
+
+    const response = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pseudo }), // ajoute email si tu le récupères
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error('API checkout-session non OK:', data);
+      alert(data?.error || 'Server error creating Stripe session.');
+      return;
+    }
+
+    if (!data?.id) {
+      alert('Réponse Stripe invalide (session id manquant).');
+      return;
+    }
+
+    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+    if (error) {
+      console.error('redirectToCheckout error:', error);
+      alert(error.message || 'Redirection Stripe échouée.');
+    }
+  } catch (e) {
+    console.error('handleCheckout error:', e);
+    alert('Erreur Stripe côté client. Regarde la console.');
+  }
+};
+
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
