@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
+import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -31,51 +32,61 @@ export default function Home() {
 
   useEffect(() => {
     if (!lore) return;
-    let index = 0;
-    const interval = setInterval(() => {
-      setDisplayedLore((prev) => prev + lore.charAt(index));
-      index++;
-      if (index >= lore.length) {
-        clearInterval(interval);
-      }
+    let i = 0;
+    const it = setInterval(() => {
+      setDisplayedLore((prev) => prev + lore.charAt(i));
+      i++;
+      if (i >= lore.length) clearInterval(it);
     }, 12);
-    return () => clearInterval(interval);
+    return () => clearInterval(it);
   }, [lore]);
 
   const handleCheckout = async () => {
     try {
       const stripe = await stripePromise;
       if (!stripe) {
-        alert('Stripe n’a pas pu être initialisé.');
+        alert('Stripe failed to load on this device.');
         return;
       }
 
-      const res = await fetch('/api/checkout-session', {
+      const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pseudo }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
+      const data = await resp.json();
+      if (!resp.ok) {
         console.error('API checkout-session non OK:', data);
-        alert(data?.error || 'Server error while creating session.');
+        alert(data?.error || 'Server error creating checkout session.');
         return;
       }
 
-      if (!data?.id) {
-        alert('Missing session ID.');
+      // 1) essai standard
+      if (data?.id) {
+        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+        if (!error) return;
+
+        console.warn('redirectToCheckout error, will fallback:', error);
+        // 2) fallback via URL si dispo
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+        alert(error.message || 'Unable to open Stripe Checkout.');
         return;
       }
 
-      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-      if (error) {
-        console.error('Stripe redirect error:', error);
-        alert(error.message || 'Stripe redirection failed.');
+      // pas d’id ? on tente l’URL si Stripe la renvoie
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
       }
-    } catch (err) {
-      console.error('handleCheckout error:', err);
-      alert('Internal error creating session');
+
+      alert('No session returned by server.');
+    } catch (e) {
+      console.error('handleCheckout error:', e);
+      alert('Unexpected error starting checkout.');
     }
   };
 
@@ -84,6 +95,9 @@ export default function Home() {
       <Head>
         <title>Lore of Legends</title>
       </Head>
+
+      {/* Charge Stripe.js explicitement */}
+      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
       {/* Background video */}
       <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
@@ -99,7 +113,7 @@ export default function Home() {
         <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-6 text-white" style={{ fontFamily: 'Cinzel, serif' }}>
+        <h1 className="text-3xl font-bold mb-6 text-white lore-title">
           Generate your Runeterra Lore
         </h1>
 
@@ -146,8 +160,8 @@ export default function Home() {
         {/* Lore Output */}
         {lore && (
           <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
-            <div className="lore-box bg-black/90 text-white p-6 rounded-lg max-w-xl w-full text-center leading-relaxed shadow-lg mb-6">
-              {/* <span> pour le typewriter + styles custom */}
+            <div className="lore-box bg-black text-white p-6 rounded-lg max-w-xl w-full text-center text-md leading-relaxed shadow-lg mb-6">
+              {/* Ajout de la classe lore-text, rien d'autre */}
               <span className="lore-text">{displayedLore}</span>
             </div>
             <button
@@ -169,7 +183,7 @@ export default function Home() {
               >
                 ✖
               </button>
-              <h2 className="text-xl font-bold mb-4 text-center" style={{ fontFamily: 'Cinzel, serif' }}>
+              <h2 className="text-xl font-bold mb-4 text-center lore-title">
                 Your Lore is ready
               </h2>
               <div className="mb-4">
@@ -179,7 +193,7 @@ export default function Home() {
                   height="400"
                   allowFullScreen
                   className="rounded"
-                ></iframe>
+                />
               </div>
               <button
                 onClick={handleCheckout}
