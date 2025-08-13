@@ -6,40 +6,6 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-// --- Carrousel réutilisable ---
-function TopLoreCarousel({ items }) {
-  return (
-    <div className="w-full flex flex-col items-center mt-10">
-      <h2 className="text-2xl font-bold mb-4">Top Lore of the Week</h2>
-      <div className="w-full max-w-5xl overflow-x-auto">
-        <div className="flex gap-4 px-1">
-          {items.map((item) => (
-            <div
-              key={item.name}
-              className="min-w-[300px] bg-black/50 rounded-2xl p-3 backdrop-blur overflow-hidden shadow-lg"
-            >
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                poster={item.poster}
-                className="w-[280px] h-[160px] object-cover rounded-xl"
-              >
-                <source src={item.video} type="video/mp4" />
-                {/* Optionnel : ajouter une source .webm si dispo */}
-                {/* <source src={item.video.replace('.mp4', '.webm')} type="video/webm" /> */}
-              </video>
-              <p className="mt-3 font-semibold text-center">{item.name}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
   const [genre, setGenre] = useState('Man');
@@ -48,15 +14,6 @@ export default function Home() {
   const [displayedLore, setDisplayedLore] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-
-  // --- Données du carrousel vidéo ---
-  const topLore = [
-    { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
-    { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
-    { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
-    { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
-    { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
-  ];
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -91,20 +48,25 @@ export default function Home() {
         alert('Stripe failed to load on this device.');
         return;
       }
+
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pseudo }),
       });
+
       const data = await resp.json();
       if (!resp.ok) {
         console.error('API checkout-session non OK:', data);
         alert(data?.error || 'Server error creating checkout session.');
         return;
       }
+
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
+
+        console.warn('redirectToCheckout error, will fallback:', error);
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -112,10 +74,12 @@ export default function Home() {
         alert(error.message || 'Unable to open Stripe Checkout.');
         return;
       }
+
       if (data?.url) {
         window.location.href = data.url;
         return;
       }
+
       alert('No session returned by server.');
     } catch (e) {
       console.error('handleCheckout error:', e);
@@ -129,31 +93,23 @@ export default function Home() {
         <title>Lore of Legends</title>
       </Head>
 
-      {/* Stripe.js explicite */}
       <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
-      {/* Background video */}
       <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
         <source src="/background.mp4" type="video/mp4" />
       </video>
 
-      {/* Overlay */}
       <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
 
-      {/* Main Content */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
-        {/* Logo */}
         <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
-
-        {/* Title */}
         <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
 
-        {/* Form */}
-        <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
+        <div className="bg-black bg-opacity-40 p-6 rounded-3xl backdrop-blur w-15 max-w-sm space-y-4">
           <select
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
+            className="h-14 p-3 rounded-3xl w-full bg-white text-black"
           >
             <option>Man</option>
             <option>Woman</option>
@@ -165,13 +121,13 @@ export default function Home() {
             placeholder="Enter your Summoner Name"
             value={pseudo}
             onChange={(e) => setPseudo(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full text-black"
+            className="h-14 p-3 rounded-3xl w-full text-black"
           />
 
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
+            className="h-14 p-3 rounded-3xl w-full bg-white text-black"
           >
             <option>Top</option>
             <option>Mid</option>
@@ -182,37 +138,49 @@ export default function Home() {
 
           <button
             onClick={handleGenerate}
-            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-[18px] w-full"
+            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-3xl w-full"
           >
             {loading ? 'Generating...' : 'Generate My Lore'}
           </button>
         </div>
 
-        {/* Carrousel en haut (visible seulement AVANT génération) */}
-        {!lore && <TopLoreCarousel items={topLore} />}
-
-        {/* Lore Output */}
         {lore && (
-          <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
-            <div className="lore-box bg-black text-white p-6 rounded-lg max-w-xl w-full text-center text-md leading-relaxed shadow-lg mb-6">
-              <span className="whitespace-pre-line">{displayedLore}</span>
+          <>
+            <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
+              <div className="lore-box bg-black text-white p-6 rounded-3xl w-fit text-center text-md leading-relaxed shadow-lg mb-6">
+                <span className="whitespace-pre-line">{displayedLore}</span>
+              </div>
+              <button
+                className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-3xl"
+                onClick={() => setShowPopup(true)}
+              >
+                Generate your Lore Video
+              </button>
             </div>
-            <button
-              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
-              onClick={() => setShowPopup(true)}
-            >
-              Generate your Lore Video
-            </button>
 
-            {/* Carrousel en bas (visible seulement APRÈS génération, sous le bouton) */}
-            <TopLoreCarousel items={topLore} />
-          </div>
+            {/* Carousel */}
+            <div className="mt-12 w-full max-w-4xl overflow-x-auto flex gap-4 px-4">
+              {[
+                { src: '/top-lore/akuseru.mp4', name: 'Akuseru' },
+                { src: '/top-lore/soukoupaks.mp4', name: 'Soukoupaks' },
+                { src: '/top-lore/Gabybixx.mp4', name: 'Gabybixx' },
+                { src: '/top-lore/Kintesence.mp4', name: 'Kintesence' },
+                { src: '/top-lore/Kitou.mp4', name: 'Kitou' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex-shrink-0 w-60 bg-black bg-opacity-50 rounded-3xl overflow-hidden shadow-lg">
+                  <video autoPlay loop muted playsInline className="w-full h-40 object-cover">
+                    <source src={item.src} type="video/mp4" />
+                  </video>
+                  <div className="p-4 text-center text-white font-bold">{item.name}</div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
-        {/* Popup */}
         {showPopup && (
           <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative">
+            <div className="bg-gray-900 text-white p-6 rounded-3xl max-w-xl w-fit relative">
               <button
                 className="absolute top-2 right-2 text-white text-xl"
                 onClick={() => setShowPopup(false)}
@@ -226,12 +194,12 @@ export default function Home() {
                   width="100%"
                   height="400"
                   allowFullScreen
-                  className="rounded"
+                  className="rounded-3xl"
                 />
               </div>
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-3xl text-lg"
               >
                 Purchase your Lore Video
               </button>
