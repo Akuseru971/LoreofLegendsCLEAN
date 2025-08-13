@@ -218,50 +218,33 @@ export default function Home() {
         )}
 
        {showPopup && (
-  <div
-    className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-start justify-center overflow-y-auto"
-    role="dialog"
-    aria-modal="true"
-  >
-    {/* Conteneur de la popup */}
-    <div className="relative w-full max-w-xl mx-4 my-6 bg-gray-900 text-white rounded-lg shadow-xl">
-
-      {/* Bouton close */}
+  <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 px-4">
+    <div className="bg-gray-900 text-white p-4 rounded-lg w-full max-w-xl relative h-screen md:h-auto md:max-h-[90vh] overflow-y-auto">
       <button
         className="absolute top-2 right-2 text-white text-xl"
         onClick={() => setShowPopup(false)}
-        aria-label="Close"
       >
         ✖
       </button>
-
-      {/* Contenu scrollable */}
-      <div className="p-4 sm:p-6 max-h-[90vh] overflow-y-auto overscroll-contain">
-        <h2 className="text-lg md:text-xl font-bold mb-4 text-center">
-          Your Lore is ready
-        </h2>
-
-        <div className="mb-4">
-          <iframe
-            src="https://www.tiktok.com/embed/v2/7529586683185040662"
-            width="100%"
-            height="250"            // mobile-friendly
-            allowFullScreen
-            className="rounded"
-          />
-        </div>
-
-        <button
-          onClick={handleCheckout}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
-        >
-          Purchase your Lore Video
-        </button>
+      <h2 className="text-lg md:text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
+      <div className="mb-4">
+        <iframe
+          src="https://www.tiktok.com/embed/v2/7529586683185040662"
+          width="100%"
+          height="250"
+          allowFullScreen
+          className="rounded"
+        />
       </div>
+      <button
+        onClick={handleCheckout}
+        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+      >
+        Purchase your Lore Video
+      </button>
     </div>
   </div>
 )}
-
       </div>
     </div>
   );
