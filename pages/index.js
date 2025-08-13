@@ -1,9 +1,19 @@
+// pages/index.js
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
+import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// Stripe helper: évite d'évaluer la clé trop tôt et garantit un seul chargement
+let stripePromise;
+const getStripe = () => {
+  if (!stripePromise) {
+    const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+    stripePromise = loadStripe(pk);
+  }
+  return stripePromise;
+};
 
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
@@ -41,49 +51,61 @@ export default function Home() {
   }, [lore]);
 
   const handleCheckout = async () => {
-  try {
-    const stripe = await stripePromise;
-    if (!stripe) {
-      alert('Stripe n’a pas pu être initialisé.');
-      return;
+    try {
+      // 1) Vérifier la clé publique côté client
+      const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      if (!pk) {
+        alert('Stripe: clé publique manquante (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).');
+        console.error('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+        return;
+      }
+
+      // 2) S’assurer que Stripe.js est bien chargé
+      const stripe = await getStripe();
+      if (!stripe) {
+        alert('Stripe.js ne s’est pas initialisé correctement.');
+        console.error('Stripe instance is null');
+        return;
+      }
+
+      // 3) Créer la session côté serveur (POST obligatoire)
+      const resp = await fetch('/api/checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pseudo }), // on envoie le pseudo si tu veux l’utiliser côté serveur
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error('checkout-session non-OK:', resp.status, txt);
+        alert(`Erreur serveur Stripe (${resp.status}). Regarde la console.`);
+        return;
+      }
+
+      const data = await resp.json();
+      if (!data?.id) {
+        console.error('Réponse checkout-session sans id:', data);
+        alert('Réponse Stripe invalide (pas de session.id).');
+        return;
+      }
+
+      // 4) Redirection Checkout
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (error) {
+        console.error('redirectToCheckout error:', error);
+        alert(error.message || 'Impossible d’ouvrir Stripe Checkout.');
+      }
+    } catch (e) {
+      console.error('handleCheckout exception:', e);
+      alert('Unexpected error starting checkout.');
     }
-
-    const resp = await fetch('/api/checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // envoie ce que tu veux conserver (pseudo, email si tu l’ajoutes plus tard, etc.)
-      body: JSON.stringify({ pseudo }),
-    });
-
-    // Essaye de décoder la réponse JSON même si le serveur renvoie une erreur
-    const data = await resp.json().catch(() => null);
-
-    if (!resp.ok) {
-      console.error('Server error /api/checkout-session:', data);
-      alert(data?.error || 'Erreur serveur lors de la création de la session Stripe.');
-      return;
-    }
-
-    if (!data?.id) {
-      console.error('Missing session.id:', data);
-      alert('Session Stripe invalide (ID manquant).');
-      return;
-    }
-
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-    if (error) {
-      console.error('redirectToCheckout error:', error);
-      alert(error.message || 'Redirection Stripe échouée.');
-    }
-  } catch (err) {
-    console.error('handleCheckout exception:', err);
-    alert('Impossible de lancer Stripe (voir console).');
-  }
-};
-
+  };
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
+      {/* Charge explicitement Stripe.js dès que possible */}
+      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
+
       <Head>
         <title>Lore of Legends</title>
       </Head>
@@ -177,7 +199,7 @@ export default function Home() {
                   height="400"
                   allowFullScreen
                   className="rounded"
-                ></iframe>
+                />
               </div>
               <button
                 onClick={handleCheckout}
