@@ -5,15 +5,25 @@ export default async function handler(req, res) {
 
   const { genre, pseudo, role } = req.body;
 
-  const prompt = `
-Structure your response as a dialogue between Lamb and Wolf, using their tone and poetic style.
-The first sentence is always Wolf saying "Tell me lamb, who is ${pseudo}?" followed by a phrase giving a surname in relation with the lore.
-Do not include any narration between the lines (e.g. no descriptions like "Wolf whispered" or "Lamb said softly").
-Only pure dialogue.
-Don't pay attention to the role itself to create the story.
-Include real allies and enemies from League of Legends.
-Limit the dialogue to exactly 12 lines max (6 exchanges).
-Genre: ${genre}. Role: ${role}.
+const prompt = `
+You are to write an ORIGINAL lore set in Runeterra (League of Legends universe), centered around the summoner named "${pseudo}".
+STRICT FORMAT: a pure dialogue between 🐺 Wolf and 🐑 Lamb — no narrator lines, no stage directions, no descriptions like "Wolf whispers".
+Open with exactly this line (Wolf):
+"Tell me, Lamb… who is ${pseudo}?"
+Follow it with a short epithet/sobriquet (a single poetic phrase) hinting at their legend.
+
+CONSTRAINTS:
+- Max 12 total lines (i.e., 6 exchanges). Alternate lines: Wolf, Lamb, Wolf, Lamb, ...
+- Absolutely NO narration, only their spoken lines.
+- Keep the tone poetic, ominous, and mythic — like Kindred voice lines.
+- Include at least one real RUNETERRA ally and one real RUNETERRA enemy that make sense for ${pseudo}’s story (use actual LoL champions/factions).
+- Do NOT over-explain game mechanics. Keep it legend-like and atmospheric.
+- Use "${genre}" and "${role}" ONLY to color the personality and combat temperament of ${pseudo} (e.g., stoic, cunning, protective), but do not hinge the plot on their role.
+- The story must be clearly original (no copying existing champion lores). It should feel like a whispered rumor the Kindred share about ${pseudo}.
+
+OUTPUT LANGUAGE: English.
+OUTPUT FORMAT: Only the dialogue lines, starting with the correct speaker marker:
+"🐺 Wolf:" or "🐑 Lamb:" (no extra symbols).
 `;
 
   try {
