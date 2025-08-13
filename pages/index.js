@@ -6,6 +6,40 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
+// --- Carrousel réutilisable ---
+function TopLoreCarousel({ items }) {
+  return (
+    <div className="w-full flex flex-col items-center mt-10">
+      <h2 className="text-2xl font-bold mb-4">Top Lore of the Week</h2>
+      <div className="w-full max-w-5xl overflow-x-auto">
+        <div className="flex gap-4 px-1">
+          {items.map((item) => (
+            <div
+              key={item.name}
+              className="min-w-[300px] bg-black/50 rounded-2xl p-3 backdrop-blur overflow-hidden shadow-lg"
+            >
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                poster={item.poster}
+                className="w-[280px] h-[160px] object-cover rounded-xl"
+              >
+                <source src={item.video} type="video/mp4" />
+                {/* Optionnel : ajouter une source .webm si dispo */}
+                {/* <source src={item.video.replace('.mp4', '.webm')} type="video/webm" /> */}
+              </video>
+              <p className="mt-3 font-semibold text-center">{item.name}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
   const [genre, setGenre] = useState('Man');
@@ -57,25 +91,20 @@ export default function Home() {
         alert('Stripe failed to load on this device.');
         return;
       }
-
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pseudo }),
       });
-
       const data = await resp.json();
       if (!resp.ok) {
         console.error('API checkout-session non OK:', data);
         alert(data?.error || 'Server error creating checkout session.');
         return;
       }
-
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
-
-        console.warn('redirectToCheckout error, will fallback:', error);
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -83,12 +112,10 @@ export default function Home() {
         alert(error.message || 'Unable to open Stripe Checkout.');
         return;
       }
-
       if (data?.url) {
         window.location.href = data.url;
         return;
       }
-
       alert('No session returned by server.');
     } catch (e) {
       console.error('handleCheckout error:', e);
@@ -102,7 +129,7 @@ export default function Home() {
         <title>Lore of Legends</title>
       </Head>
 
-      {/* Charge Stripe.js explicitement */}
+      {/* Stripe.js explicite */}
       <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
       {/* Background video */}
@@ -161,37 +188,8 @@ export default function Home() {
           </button>
         </div>
 
-        {/* --- Carrousel : Top Lore of the Week (VIDÉOS) --- */}
-        <div className="w-full flex flex-col items-center mt-10">
-          <h2 className="text-2xl font-bold mb-4">Top Lore of the Week</h2>
-
-          <div className="w-full max-w-5xl overflow-x-auto">
-            <div className="flex gap-4 px-1">
-              {topLore.map((item) => (
-                <div
-                  key={item.name}
-                  className="min-w-[300px] bg-black/50 rounded-2xl p-3 backdrop-blur overflow-hidden shadow-lg"
-                >
-                  <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                    poster={item.poster}
-                    className="w-[280px] h-[160px] object-cover rounded-xl"
-                  >
-                    <source src={item.video} type="video/mp4" />
-                    {/* Optionnel: ajoute un .webm si tu en as */}
-                    {/* <source src={item.video.replace('.mp4', '.webm')} type="video/webm" /> */}
-                  </video>
-                  <p className="mt-3 font-semibold text-center">{item.name}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* --- Fin carrousel --- */}
+        {/* Carrousel en haut (visible seulement AVANT génération) */}
+        {!lore && <TopLoreCarousel items={topLore} />}
 
         {/* Lore Output */}
         {lore && (
@@ -205,6 +203,9 @@ export default function Home() {
             >
               Generate your Lore Video
             </button>
+
+            {/* Carrousel en bas (visible seulement APRÈS génération, sous le bouton) */}
+            <TopLoreCarousel items={topLore} />
           </div>
         )}
 
