@@ -17,16 +17,11 @@ export default function Home() {
 
   // --- Données du carrousel vidéo ---
   const topLore = [
-    {
-      name: 'Akuseru',
-      video: '/top-lore/Akuseru.mp4',
-      // poster: '/top-lore/Akuseru.jpg', // optionnel si tu ajoutes une image
-    },
-    {
-      name: 'Soukoupaks',
-      video: '/top-lore/Soukoupaks.mp4',
-      // poster: '/top-lore/Soukoupaks.jpg', // optionnel
-    },
+    { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
+    { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
+    { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
+    { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
+    { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
   ];
 
   const handleGenerate = async () => {
@@ -76,13 +71,11 @@ export default function Home() {
         return;
       }
 
-      // 1) Essai standard avec sessionId
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
 
         console.warn('redirectToCheckout error, will fallback:', error);
-        // 2) Fallback via URL si dispo
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -91,7 +84,6 @@ export default function Home() {
         return;
       }
 
-      // Pas d’id ? on tente l’URL si Stripe la renvoie
       if (data?.url) {
         window.location.href = data.url;
         return;
@@ -173,7 +165,7 @@ export default function Home() {
         <div className="w-full flex flex-col items-center mt-10">
           <h2 className="text-2xl font-bold mb-4">Top Lore of the Week</h2>
 
-          <div className="w-full max-w-4xl overflow-x-auto">
+          <div className="w-full max-w-5xl overflow-x-auto">
             <div className="flex gap-4 px-1">
               {topLore.map((item) => (
                 <div
@@ -181,15 +173,18 @@ export default function Home() {
                   className="min-w-[300px] bg-black/50 rounded-2xl p-3 backdrop-blur overflow-hidden shadow-lg"
                 >
                   <video
-                    src={item.video}
                     autoPlay
                     loop
                     muted
                     playsInline
                     preload="metadata"
+                    poster={item.poster}
                     className="w-[280px] h-[160px] object-cover rounded-xl"
-                    // poster={item.poster} // décommente si tu ajoutes un poster
-                  />
+                  >
+                    <source src={item.video} type="video/mp4" />
+                    {/* Optionnel: ajoute un .webm si tu en as */}
+                    {/* <source src={item.video.replace('.mp4', '.webm')} type="video/webm" /> */}
+                  </video>
                   <p className="mt-3 font-semibold text-center">{item.name}</p>
                 </div>
               ))}
