@@ -13,7 +13,7 @@ Open with exactly this line (Wolf):
 Follow it with a short epithet/sobriquet (a single poetic phrase) hinting at their legend.
 
 CONSTRAINTS:
-- Max 12 total lines (i.e., 6 exchanges). Alternate lines: Wolf, Lamb, Wolf, Lamb, ...
+- The prompt must always generate exactly 10 lines of dialogue. Alternate lines: Wolf, Lamb, Wolf, Lamb, ...
 - Absolutely NO narration, only their spoken lines.
 - Keep the tone poetic, ominous, and mythic — like Kindred voice lines.
 - Include at least one real RUNETERRA ally and one real RUNETERRA enemy that make sense for ${pseudo}’s story (use actual LoL champions/factions).
