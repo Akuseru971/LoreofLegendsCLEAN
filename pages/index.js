@@ -6,12 +6,6 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-// ---- Données du carrousel (à personnaliser) ----
-const TOP_LORES = [
-  { pseudo: 'Akuseru', img: '/top-lore/Akuseru.png' },
-  { pseudo: 'Soukoupaks', img: '/top-lore/Soukoupaks.png' },
-];
-
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
   const [genre, setGenre] = useState('Man');
@@ -20,6 +14,20 @@ export default function Home() {
   const [displayedLore, setDisplayedLore] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+
+  // --- Données du carrousel vidéo ---
+  const topLore = [
+    {
+      name: 'Akuseru',
+      video: '/top-lore/Akuseru.mp4',
+      // poster: '/top-lore/Akuseru.jpg', // optionnel si tu ajoutes une image
+    },
+    {
+      name: 'Soukoupaks',
+      video: '/top-lore/Soukoupaks.mp4',
+      // poster: '/top-lore/Soukoupaks.jpg', // optionnel
+    },
+  ];
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -68,11 +76,13 @@ export default function Home() {
         return;
       }
 
+      // 1) Essai standard avec sessionId
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
 
         console.warn('redirectToCheckout error, will fallback:', error);
+        // 2) Fallback via URL si dispo
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -81,6 +91,7 @@ export default function Home() {
         return;
       }
 
+      // Pas d’id ? on tente l’URL si Stripe la renvoie
       if (data?.url) {
         window.location.href = data.url;
         return;
@@ -116,16 +127,14 @@ export default function Home() {
         <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-6 text-white">
-          Generate your Runeterra Lore
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
 
         {/* Form */}
         <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
           <select
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
-            className="h-14 p-3 rounded-full w-full bg-white text-black"
+            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
           >
             <option>Man</option>
             <option>Woman</option>
@@ -137,13 +146,13 @@ export default function Home() {
             placeholder="Enter your Summoner Name"
             value={pseudo}
             onChange={(e) => setPseudo(e.target.value)}
-            className="h-14 p-3 rounded-full w-full text-black"
+            className="h-14 p-3 rounded-[18px] w-full text-black"
           />
 
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="h-14 p-3 rounded-full w-full bg-white text-black"
+            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
           >
             <option>Top</option>
             <option>Mid</option>
@@ -154,11 +163,40 @@ export default function Home() {
 
           <button
             onClick={handleGenerate}
-            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-full w-full transition"
+            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-[18px] w-full"
           >
             {loading ? 'Generating...' : 'Generate My Lore'}
           </button>
         </div>
+
+        {/* --- Carrousel : Top Lore of the Week (VIDÉOS) --- */}
+        <div className="w-full flex flex-col items-center mt-10">
+          <h2 className="text-2xl font-bold mb-4">Top Lore of the Week</h2>
+
+          <div className="w-full max-w-4xl overflow-x-auto">
+            <div className="flex gap-4 px-1">
+              {topLore.map((item) => (
+                <div
+                  key={item.name}
+                  className="min-w-[300px] bg-black/50 rounded-2xl p-3 backdrop-blur overflow-hidden shadow-lg"
+                >
+                  <video
+                    src={item.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="w-[280px] h-[160px] object-cover rounded-xl"
+                    // poster={item.poster} // décommente si tu ajoutes un poster
+                  />
+                  <p className="mt-3 font-semibold text-center">{item.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* --- Fin carrousel --- */}
 
         {/* Lore Output */}
         {lore && (
@@ -167,7 +205,7 @@ export default function Home() {
               <span className="whitespace-pre-line">{displayedLore}</span>
             </div>
             <button
-              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-full transition"
+              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
               onClick={() => setShowPopup(true)}
             >
               Generate your Lore Video
@@ -175,62 +213,29 @@ export default function Home() {
           </div>
         )}
 
-        {/* ---- Top Lore of the Week ---- */}
-        <section className="w-full max-w-5xl mt-16 mb-12 px-2">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Top Lore of the Week</h2>
-
-          <div className="carousel no-scrollbar overflow-x-auto snap-x snap-mandatory flex gap-4 px-1 py-2">
-            {TOP_LORES.map((item, idx) => (
-              <article
-                key={idx}
-                className="snap-start shrink-0 w-[220px] bg-black/60 backdrop-blur rounded-xl border border-white/10 overflow-hidden"
-              >
-                <div className="relative w-full h-[140px]">
-                  <Image
-                    src={item.img}
-                    alt={item.pseudo}
-                    fill
-                    sizes="220px"
-                    className="object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="p-3 text-center">
-                  <p className="text-sm text-white/80">Summoner</p>
-                  <p className="text-lg font-semibold">{item.pseudo}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
         {/* Popup */}
         {showPopup && (
           <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative popup-animate">
+            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative">
               <button
-                className="absolute top-2 right-2 text-white text-xl rounded-full p-2 hover:bg-white/10 transition"
+                className="absolute top-2 right-2 text-white text-xl"
                 onClick={() => setShowPopup(false)}
-                aria-label="Close"
               >
                 ✖
               </button>
-
               <h2 className="text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
-
               <div className="mb-4">
                 <iframe
                   src="https://www.tiktok.com/embed/v2/7529586683185040662"
                   width="100%"
                   height="400"
                   allowFullScreen
-                  className="rounded-lg"
+                  className="rounded"
                 />
               </div>
-
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg transition"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
               >
                 Purchase your Lore Video
               </button>
