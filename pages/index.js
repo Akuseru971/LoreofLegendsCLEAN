@@ -45,39 +45,51 @@ export default function Home() {
   try {
     const stripe = await stripePromise;
     if (!stripe) {
-      alert('Stripe n’a pas pu être initialisé.');
+      alert('Stripe failed to load on this device.');
       return;
     }
 
-    const response = await fetch('/api/checkout-session', {
+    const resp = await fetch('/api/checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pseudo }), // ajoute email si tu le récupères
+      body: JSON.stringify({ pseudo }),
     });
 
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
+    const data = await resp.json();
+    if (!resp.ok) {
       console.error('API checkout-session non OK:', data);
-      alert(data?.error || 'Server error creating Stripe session.');
+      alert(data?.error || 'Server error creating checkout session.');
       return;
     }
 
-    if (!data?.id) {
-      alert('Réponse Stripe invalide (session id manquant).');
+    // 1) essai standard
+    if (data?.id) {
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (!error) return;
+
+      console.warn('redirectToCheckout error, will fallback:', error);
+      // 2) fallback via URL si dispo
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      alert(error.message || 'Unable to open Stripe Checkout.');
       return;
     }
 
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-    if (error) {
-      console.error('redirectToCheckout error:', error);
-      alert(error.message || 'Redirection Stripe échouée.');
+    // pas d’id ? on tente l’URL si Stripe la renvoie
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
     }
+
+    alert('No session returned by server.');
   } catch (e) {
     console.error('handleCheckout error:', e);
-    alert('Erreur Stripe côté client. Regarde la console.');
+    alert('Unexpected error starting checkout.');
   }
 };
+
 
 
   return (
