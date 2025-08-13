@@ -1,41 +1,58 @@
-const handleCheckout = async () => {
+// pages/api/checkout-session.js
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-06-20',
+});
+
+export default async function handler(req, res) {
+  // N'accepte que POST
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   try {
-    const stripe = await stripePromise;
-    if (!stripe) {
-      alert('Stripe not initialized – check NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-      return;
+    // Récupère ce que tu envoies depuis le client (ex: pseudo)
+    const { pseudo } = req.body || {};
+
+    // ⚠️ Mets ici ton prix Stripe (Price ID, ex: price_XXXX)
+    const priceId = process.env.STRIPE_PRICE_ID;
+    if (!priceId) {
+      return res.status(500).json({ error: 'Missing STRIPE_PRICE_ID env var' });
     }
 
-    const response = await fetch('/api/checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pseudo,
-        genre,
-        role,
-        lore: displayedLore, // ou lore si tu veux
-      }),
+    // URLs de redirection (à mettre à jour si tu veux tes propres pages)
+    const origin =
+      req.headers.origin ||
+      `https://${req.headers.host}` ||
+      'https://loreoflegendsclean.vercel.app';
+
+    const successUrl = `${origin}/success`;
+    const cancelUrl = origin;
+
+    // Crée la session de paiement
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      // On peut stocker des infos utiles pour le webhook
+      metadata: {
+        pseudo: pseudo || '',
+      },
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      console.error('checkout-session 500:', data);
-      alert(data.error || 'Checkout failed (server).');
-      return;
-    }
-
-    if (!data?.id) {
-      alert('No checkout session returned.');
-      return;
-    }
-
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-    if (error) {
-      console.error('Stripe redirect error:', error);
-      alert(error.message || 'Stripe redirect failed');
-    }
+    return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error('handleCheckout error:', err);
-    alert('Unexpected error starting checkout.');
+    console.error('Checkout session error:', err);
+    return res.status(500).json({
+      error: err?.message || 'Failed to create checkout session',
+    });
   }
-};
+}
