@@ -1,4 +1,3 @@
-// pages/index.js
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -6,6 +5,12 @@ import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+
+// ---- Données du carrousel (à personnaliser) ----
+const TOP_LORES = [
+  { pseudo: 'Akuseru', img: '/top-lore/Akuseru.png' },
+  { pseudo: 'Soukoupaks', img: '/top-lore/Soukoupaks.png' },
+];
 
 export default function Home() {
   const [pseudo, setPseudo] = useState('');
@@ -94,19 +99,28 @@ export default function Home() {
         <title>Lore of Legends</title>
       </Head>
 
+      {/* Charge Stripe.js explicitement */}
       <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
+      {/* Background video */}
       <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
         <source src="/background.mp4" type="video/mp4" />
       </video>
 
+      {/* Overlay */}
       <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
 
+      {/* Main Content */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
+        {/* Logo */}
         <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
-        <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
+        {/* Title */}
+        <h1 className="text-3xl font-bold mb-6 text-white">
+          Generate your Runeterra Lore
+        </h1>
 
+        {/* Form */}
         <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
           <select
             value={genre}
@@ -140,19 +154,20 @@ export default function Home() {
 
           <button
             onClick={handleGenerate}
-            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-full w-full"
+            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-full w-full transition"
           >
             {loading ? 'Generating...' : 'Generate My Lore'}
           </button>
         </div>
 
+        {/* Lore Output */}
         {lore && (
           <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
             <div className="lore-box bg-black text-white p-6 rounded-lg max-w-xl w-full text-center text-md leading-relaxed shadow-lg mb-6">
               <span className="whitespace-pre-line">{displayedLore}</span>
             </div>
             <button
-              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-full"
+              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-full transition"
               onClick={() => setShowPopup(true)}
             >
               Generate your Lore Video
@@ -160,16 +175,49 @@ export default function Home() {
           </div>
         )}
 
+        {/* ---- Top Lore of the Week ---- */}
+        <section className="w-full max-w-5xl mt-16 mb-12 px-2">
+          <h2 className="text-2xl font-semibold mb-4 text-center">Top Lore of the Week</h2>
+
+          <div className="carousel no-scrollbar overflow-x-auto snap-x snap-mandatory flex gap-4 px-1 py-2">
+            {TOP_LORES.map((item, idx) => (
+              <article
+                key={idx}
+                className="snap-start shrink-0 w-[220px] bg-black/60 backdrop-blur rounded-xl border border-white/10 overflow-hidden"
+              >
+                <div className="relative w-full h-[140px]">
+                  <Image
+                    src={item.img}
+                    alt={item.pseudo}
+                    fill
+                    sizes="220px"
+                    className="object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="p-3 text-center">
+                  <p className="text-sm text-white/80">Summoner</p>
+                  <p className="text-lg font-semibold">{item.pseudo}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Popup */}
         {showPopup && (
           <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative">
+            <div className="bg-gray-900 text-white p-6 rounded-lg max-w-xl w-fit relative popup-animate">
               <button
-                className="absolute top-2 right-2 text-white text-xl"
+                className="absolute top-2 right-2 text-white text-xl rounded-full p-2 hover:bg-white/10 transition"
                 onClick={() => setShowPopup(false)}
+                aria-label="Close"
               >
                 ✖
               </button>
+
               <h2 className="text-xl font-bold mb-4 text-center">Your Lore is ready</h2>
+
               <div className="mb-4">
                 <iframe
                   src="https://www.tiktok.com/embed/v2/7529586683185040662"
@@ -179,9 +227,10 @@ export default function Home() {
                   className="rounded-lg"
                 />
               </div>
+
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-full text-lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg transition"
               >
                 Purchase your Lore Video
               </button>

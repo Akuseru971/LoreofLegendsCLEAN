@@ -84,3 +84,14 @@ body {
     0 0 8px rgba(255, 255, 255, 0.12),
     0 0 24px rgba(200, 200, 255, 0.12);
 }
+
+/* — Carousel helpers — */
+
+/* cacher la scrollbar tout en gardant le scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* inertie douce (optionnel) */
+.carousel {
+  scroll-behavior: smooth;
+}
