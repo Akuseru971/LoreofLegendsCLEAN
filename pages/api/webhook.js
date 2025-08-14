@@ -43,8 +43,23 @@ export default async function handler(req, res) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
-    const pseudo = session.metadata?.pseudo || 'Unknown Summoner';
-    const lore   = session.metadata?.lore || '';
+    // ---- Reconstitution du lore depuis la metadata (lore_1, lore_2, ...) ----
+    const md = session.metadata || {};
+    const loreChunks = Object.keys(md)
+      .filter((k) => /^lore_\d+$/.test(k))
+      .sort((a, b) => {
+        const ai = parseInt(a.split('_')[1], 10);
+        const bi = parseInt(b.split('_')[1], 10);
+        return ai - bi;
+      })
+      .map((k) => md[k] || '');
+
+    const lore = loreChunks.join('');
+
+    const pseudo = md.pseudo || 'Unknown Summoner';
+    const genre  = md.genre  || '';
+    const role   = md.role   || '';
+
     const customerEmail = session.customer_details?.email;
 
     // Transport mail (Gmail ou autre, via vos vars d’env)
@@ -53,10 +68,14 @@ export default async function handler(req, res) {
       port: Number(process.env.SMTP_PORT || 465),
       secure: process.env.SMTP_SECURE === 'true', // 'true' pour 465
       auth: {
-        user: process.env.SMTP_USER,             // votre email
+        user: process.env.SMTP_USER,             // votre email / compte
         pass: process.env.SMTP_PASS,             // mot de passe / app password
       },
     });
+
+    // Contenu commun
+    const htmlLore = `<pre style="white-space:pre-wrap;font-family:inherit;line-height:1.5;">${lore || '(empty)'}</pre>`;
+    const textLore = lore || '(empty)';
 
     // Mail admin
     try {
@@ -64,7 +83,22 @@ export default async function handler(req, res) {
         from: process.env.SENDER_EMAIL,
         to: process.env.ADMIN_EMAIL, // votre mail d’admin
         subject: `New Lore Purchase - ${pseudo}`,
-        text: `Pseudo: ${pseudo}\nEmail client: ${customerEmail || 'unknown'}\n\nLore:\n${lore}`,
+        text: `Pseudo: ${pseudo}
+Email client: ${customerEmail || 'unknown'}
+Genre: ${genre}
+Role: ${role}
+
+Lore:
+${textLore}
+`,
+        html: `
+          <p><strong>Pseudo:</strong> ${pseudo}</p>
+          <p><strong>Email client:</strong> ${customerEmail || 'unknown'}</p>
+          <p><strong>Genre:</strong> ${genre}</p>
+          <p><strong>Role:</strong> ${role}</p>
+          <p><strong>Lore:</strong></p>
+          ${htmlLore}
+        `,
       });
     } catch (err) {
       console.error('❌ Envoi mail admin échoué:', err);
@@ -77,7 +111,16 @@ export default async function handler(req, res) {
           from: process.env.SENDER_EMAIL,
           to: customerEmail,
           subject: `Your personalized Lore - ${pseudo}`,
-          text: `Here is your lore:\n\n${lore}\n\nThanks for your support!`,
+          text: `Here is your lore:
+
+${textLore}
+
+Thanks for your support!`,
+          html: `
+            <p>Here is your lore:</p>
+            ${htmlLore}
+            <p>Thanks for your support!</p>
+          `,
         });
       } catch (err) {
         console.error('❌ Envoi mail client échoué:', err);
