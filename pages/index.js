@@ -105,7 +105,7 @@ export default function Home() {
     setLore(generated);
     setLoading(false);
 
-    // ✅ Sauvegarde locale
+    // ✅ Sauvegarde locale (pour fallback)
     try {
       localStorage.setItem('lastLore', generated);
       localStorage.setItem('lastPseudo', pseudo || '');
@@ -161,7 +161,7 @@ export default function Home() {
         }
       } catch {}
 
-      // 👉 Fallback DOM: on récupère exactement ce qui est rendu à l’écran
+      // 👉 Fallback DOM: exactement le texte rendu
       if (!loreRaw) {
         const domText = loreSpanRef.current?.textContent?.trim() || '';
         if (domText) {
@@ -174,6 +174,12 @@ export default function Home() {
         loreRaw = displayedLore.trim();
       }
 
+      // 🚫 Garde-fou : ne pas créer de session si vide
+      if (!loreRaw || loreRaw.length === 0) {
+        alert('Please generate your lore first before purchasing.');
+        return;
+      }
+
       const body = {
         pseudo: pseudoToSend,
         genre: genreToSend,
@@ -184,7 +190,9 @@ export default function Home() {
 
       // Debug utile côté navigateur
       console.log('Checkout payload:', {
-        ...body,
+        pseudo: body.pseudo,
+        genre: body.genre,
+        role: body.role,
         loreRawLen: body.loreRaw.length,
         loreDisplayLen: body.loreDisplay.length,
         loreHead: body.loreRaw.slice(0, 80),
