@@ -119,41 +119,41 @@ export default function Home() {
   }, [lore]);
 
   const handleCheckout = async () => {
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        alert('Stripe failed to load on this device.');
-        return;
-      }
-      const resp = await fetch('/api/checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        alert(data?.error || 'Server error creating checkout session.');
-        return;
-      }
-      if (data?.id) {
-        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-        if (!error) return;
-        if (data?.url) {
-          window.location.href = data.url;
-          return;
-        }
-        alert(error.message || 'Unable to open Stripe Checkout.');
-        return;
-      }
+  try {
+    const stripe = await stripePromise;
+    if (!stripe) {
+      alert('Stripe failed to load on this device.');
+      return;
+    }
+    const resp = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pseudo, genre, role, lore }), // <-- send everything
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      alert(data?.error || 'Server error creating checkout session.');
+      return;
+    }
+    if (data?.id) {
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (!error) return;
       if (data?.url) {
         window.location.href = data.url;
         return;
       }
-      alert('No session returned by server.');
-    } catch (e) {
-      alert('Unexpected error starting checkout.');
+      alert(error.message || 'Unable to open Stripe Checkout.');
+      return;
     }
-  };
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
+    alert('No session returned by server.');
+  } catch (e) {
+    alert('Unexpected error starting checkout.');
+  }
+};
 
   // Lock scroll when popup open (desktop/Android)
   useEffect(() => {
