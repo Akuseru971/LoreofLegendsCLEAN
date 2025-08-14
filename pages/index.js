@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
-import * as ReactDOM from 'react-dom';
+import { createPortal } from 'react-dom';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -61,7 +61,7 @@ function PopupPortal({ children }) {
   }, [container]);
 
   if (!mounted || !container) return null;
-  return ReactDOM.createPortal(children, container);
+  return createPortal(children, container);
 }
 
 export default function Home() {
