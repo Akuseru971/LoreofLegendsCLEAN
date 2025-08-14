@@ -74,7 +74,7 @@ export default function Home() {
   useEffect(() => {
     if (!lore) return;
 
-    // Ajouter un saut de ligne après ~10 mots (ici 11 pour respirer un peu)
+    // retour à la ligne ~tous les 10 mots
     const words = lore.split(' ');
     const formattedLore = words
       .map((word, index) => ((index + 1) % 11 === 0 ? word + '\n' : word))
@@ -130,98 +130,103 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
-      <Head>
-        <title>Lore of Legends</title>
-      </Head>
+    <>
+      <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
+        <Head>
+          <title>Lore of Legends</title>
+        </Head>
 
-      {/* Stripe.js explicite */}
-      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
+        {/* Stripe.js explicite */}
+        <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
-      {/* Background video */}
-      <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
-        <source src="/background.mp4" type="video/mp4" />
-      </video>
+        {/* Background video */}
+        <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
+          <source src="/background.mp4" type="video/mp4" />
+        </video>
 
-      {/* Overlay */}
-      <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
+        {/* Overlay */}
+        <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
 
-      {/* Main Content */}
-      <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
-        {/* Logo */}
-        <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
+        {/* Main Content */}
+        <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
+          {/* Logo */}
+          <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
+          {/* Title */}
+          <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
 
-        {/* Form */}
-        <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
-          <select
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
-          >
-            <option>Man</option>
-            <option>Woman</option>
-            <option>Creature</option>
-          </select>
-
-          <input
-            type="text"
-            placeholder="Enter your Summoner Name"
-            value={pseudo}
-            onChange={(e) => setPseudo(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full text-black"
-          />
-
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
-          >
-            <option>Top</option>
-            <option>Mid</option>
-            <option>Jungle</option>
-            <option>ADC</option>
-            <option>Support</option>
-          </select>
-
-          <button
-            onClick={handleGenerate}
-            className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-[18px] w-full"
-          >
-            {loading ? 'Generating...' : 'Generate My Lore'}
-          </button>
-        </div>
-
-        {/* Carrousel en haut (visible seulement AVANT génération) */}
-        {!lore && <TopLoreCarousel items={topLore} />}
-
-        {/* Lore Output */}
-        {lore && (
-          <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
-            <div className="lore-box bg-black text-white p-6 rounded-lg w-fit text-center text-md leading-relaxed shadow-lg mb-6">
-              <span className="whitespace-pre-line">{displayedLore}</span>
-            </div>
-            <button
-              className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
-              onClick={() => setShowPopup(true)}
+          {/* Form */}
+          <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
+            <select
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
             >
-              Generate your Lore Video
+              <option>Man</option>
+              <option>Woman</option>
+              <option>Creature</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="Enter your Summoner Name"
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value)}
+              className="h-14 p-3 rounded-[18px] w-full text-black"
+            />
+
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="h-14 p-3 rounded-[18px] w-full bg-white text-black"
+            >
+              <option>Top</option>
+              <option>Mid</option>
+              <option>Jungle</option>
+              <option>ADC</option>
+              <option>Support</option>
+            </select>
+
+            <button
+              onClick={handleGenerate}
+              className="h-14 bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-[18px] w-full"
+            >
+              {loading ? 'Generating...' : 'Generate My Lore'}
             </button>
-
-            {/* Carrousel en bas (visible seulement APRÈS génération, sous le bouton) */}
-            <TopLoreCarousel items={topLore} />
           </div>
-        )}
 
-        {/* Popup */}
-{showPopup && (
-  <div className="fixed inset-0 z-50 bg-black/70">
-    {/* Wrapper scroll global */}
-    <div className="flex min-h-full items-start justify-center p-4">
-      {/* Carte popup */}
-      <div className="relative w-full max-w-md md:max-w-xl bg-gray-900 text-white rounded-lg shadow-xl flex flex-col">
+          {/* Carrousel en haut (visible seulement AVANT génération) */}
+          {!lore && <TopLoreCarousel items={topLore} />}
+
+          {/* Lore Output */}
+          {lore && (
+            <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
+              <div className="lore-box bg-black text-white p-6 rounded-lg w-fit text-center text-md leading-relaxed shadow-lg mb-6">
+                <span className="whitespace-pre-line">{displayedLore}</span>
+              </div>
+              <button
+                className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
+                onClick={() => setShowPopup(true)}
+              >
+                Generate your Lore Video
+              </button>
+
+              {/* Carrousel en bas (visible APRÈS génération) */}
+              <TopLoreCarousel items={topLore} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Popup */}
+      {showPopup && (
+      <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
+    {/* wrapper collé tout en haut */}
+    <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
+      <div
+        className="relative bg-gray-900 text-white rounded-lg shadow-xl"
+        style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }} // pousse au plus haut
+      >
         {/* Close */}
         <button
           className="absolute top-2 right-2 text-white text-2xl leading-none"
@@ -232,23 +237,23 @@ export default function Home() {
         </button>
 
         {/* Titre */}
-        <h2 className="text-lg md:text-xl font-bold text-center pt-4 px-4">
+        <h2 className="text-lg md:text-xl font-bold text-center pt-3 px-4">
           Your Lore is ready
         </h2>
 
-        {/* Zone scrollable (contenu) */}
-        <div className="px-4 pb-3 mt-3 overflow-y-auto" style={{ maxHeight: '60vh' }}>
+        {/* Contenu scrollable si besoin */}
+        <div className="px-4 pb-3 mt-2 overflow-y-auto" style={{ maxHeight: '64vh' }}>
           <div className="rounded overflow-hidden">
             <iframe
               src="https://www.tiktok.com/embed/v2/7529586683185040662"
-              className="w-full h-[40vh] md:h-[55vh] rounded"
+              className="w-full h-[42vh] md:h-[58vh] rounded"
               allowFullScreen
             />
           </div>
         </div>
 
-        {/* Footer (toujours visible) */}
-        <div className="px-4 pb-4">
+        {/* Footer sticky pour garder le bouton visible */}
+        <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur rounded-b-lg">
           <button
             onClick={handleCheckout}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
@@ -260,8 +265,6 @@ export default function Home() {
     </div>
   </div>
 )}
-
-      </div>
-    </div>
+    </>
   );
 }
