@@ -215,56 +215,49 @@ export default function Home() {
           </div>
         )}
 
-        {showPopup && (
-  <div className="fixed inset-0 z-50 bg-black/70">
-    {/* Wrapper scrollable, ancré en haut, safe-areas iOS */}
-    <div
-      className="flex min-h-[100svh] items-start justify-center overflow-y-auto"
-      style={{
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
-        paddingLeft: '16px',
-        paddingRight: '16px',
-      }}
-    >
-      <div className="w-full max-w-2xl">
-        <div className="relative bg-gray-900 text-white rounded-lg shadow-xl">
-          {/* Close */}
-          <button
-            className="absolute top-2 right-2 text-white text-xl"
-            onClick={() => setShowPopup(false)}
-            aria-label="Close"
-          >
-            ✖
-          </button>
+        {/* Popup */}
+{showPopup && (
+  <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center overflow-y-auto">
+    <div className="relative w-[92vw] max-w-md md:max-w-xl mt-4 mb-6 bg-gray-900 text-white rounded-lg shadow-xl">
+      {/* Close */}
+      <button
+        className="absolute top-2 right-2 text-white text-2xl leading-none"
+        onClick={() => setShowPopup(false)}
+        aria-label="Close"
+      >
+        ✖
+      </button>
 
-          {/* Contenu */}
-          <div className="p-4 sm:p-6">
-            <h2 className="text-lg md:text-xl font-bold mb-4 text-center">
-              Your Lore is ready
-            </h2>
+      {/* Content (scrollable if needed) */}
+      <div className="px-4 pt-4 pb-2">
+        <h2 className="text-lg md:text-xl font-bold text-center mb-3">
+          Your Lore is ready
+        </h2>
 
-            {/* Vidéo très haute sur mobile, un peu moins sur desktop */}
-            <div className="mb-4">
-              <iframe
-                src="https://www.tiktok.com/embed/v2/7529586683185040662"
-                className="w-full rounded h-[72svh] md:h-[70vh]"
-                allowFullScreen
-              />
-            </div>
-
-            <button
-              onClick={handleCheckout}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
-            >
-              Purchase your Lore Video
-            </button>
-          </div>
+        <div className="rounded overflow-hidden mb-3">
+          <iframe
+            src="https://www.tiktok.com/embed/v2/7529586683185040662"
+            width="100%"
+            // plus petit sur mobile, plus grand sur desktop
+            className="w-full h-[48vh] md:h-[60vh] rounded"
+            allowFullScreen
+          />
         </div>
+      </div>
+
+      {/* Sticky footer button (toujours visible) */}
+      <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur">
+        <button
+          onClick={handleCheckout}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+        >
+          Purchase your Lore Video
+        </button>
       </div>
     </div>
   </div>
 )}
+
 
       </div>
     </div>
