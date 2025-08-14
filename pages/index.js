@@ -95,7 +95,7 @@ export default function Home() {
       body: JSON.stringify({ pseudo, genre, role }),
     });
     const data = await response.json();
-    setLore(data.lore);
+    setLore(data.lore || '');
     setLoading(false);
   };
 
@@ -118,68 +118,52 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  // ... le reste de ton fichier inchangé
+  const handleCheckout = async () => {
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) {
+        alert('Stripe failed to load on this device.');
+        return;
+      }
+      // ⚠️ On envoie ET la version brute ET celle affichée (avec sauts de ligne)
+      const body = {
+        pseudo,
+        genre,
+        role,
+        loreRaw: lore || '',
+        loreDisplay: (displayedLore || '').trim(),
+      };
 
-const handleCheckout = async () => {
-  try {
-    const stripe = await stripePromise;
-    if (!stripe) {
-      alert('Stripe failed to load on this device.');
-      return;
-    }
+      const resp = await fetch('/api/checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    // Priorité au texte affiché (avec sa mise en forme), sinon texte brut
-    const payloadLore =
-      (displayedLore && displayedLore.trim().length > 0 ? displayedLore : lore || '').trim();
-
-    if (!payloadLore) {
-      alert('Generate your lore first, then try again.');
-      return;
-    }
-
-    const body = {
-      pseudo: (pseudo || '').trim(),
-      genre: (genre || '').trim(),
-      role: (role || '').trim(),
-      lore: payloadLore, // <-- on envoie le vrai texte
-    };
-
-    const resp = await fetch('/api/checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data = await resp.json();
-
-    if (!resp.ok) {
-      console.error('API checkout-session non OK:', data);
-      alert(data?.error || 'Server error creating checkout session.');
-      return;
-    }
-
-    if (data?.id) {
-      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-      if (!error) return;
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert(data?.error || 'Server error creating checkout session.');
+        return;
+      }
+      if (data?.id) {
+        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+        if (!error) return;
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+        alert(error.message || 'Unable to open Stripe Checkout.');
+        return;
+      }
       if (data?.url) {
         window.location.href = data.url;
         return;
       }
-      alert(error.message || 'Unable to open Stripe Checkout.');
-      return;
+      alert('No session returned by server.');
+    } catch (e) {
+      alert('Unexpected error starting checkout.');
     }
-
-    if (data?.url) {
-      window.location.href = data.url;
-      return;
-    }
-
-    alert('No session returned by server.');
-  } catch (e) {
-    console.error('handleCheckout error:', e);
-    alert('Unexpected error starting checkout.');
-  }
-};
+  };
 
   // Lock scroll when popup open (desktop/Android)
   useEffect(() => {
@@ -194,7 +178,6 @@ const handleCheckout = async () => {
 
   const openPreview = () => {
     if (isIOS) {
-      // redirection page dédiée pour iOS (évite le freeze modal)
       window.location.href = `/preview?pseudo=${encodeURIComponent(pseudo || '')}`;
     } else {
       setShowPopup(true);
@@ -268,7 +251,13 @@ const handleCheckout = async () => {
           </div>
 
           {/* Carrousel en haut (visible seulement AVANT génération) */}
-          {!lore && <TopLoreCarousel items={topLore} />}
+          {!lore && <TopLoreCarousel items={[
+            { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
+            { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
+            { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
+            { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
+            { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
+          ]} />}
 
           {/* Lore Output */}
           {lore && (
@@ -284,7 +273,13 @@ const handleCheckout = async () => {
               </button>
 
               {/* Carrousel en bas (visible APRÈS génération) */}
-              <TopLoreCarousel items={topLore} />
+              <TopLoreCarousel items={[
+                { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
+                { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
+                { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
+                { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
+                { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
+              ]} />
             </div>
           )}
         </div>

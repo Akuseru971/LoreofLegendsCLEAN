@@ -12,22 +12,33 @@ export default async function handler(req, res) {
       apiVersion: '2023-10-16',
     });
 
-    const safe = (v) => (typeof v === 'string' ? v.trim() : '');
+    // On récupère TOUT ce que le client envoie
+    const {
+      pseudo = '',
+      genre = '',
+      role = '',
+      loreRaw = '',
+      loreDisplay = '',
+    } = req.body || {};
 
-    const pseudo = safe(req.body?.pseudo);
-    const genre  = safe(req.body?.genre);
-    const role   = safe(req.body?.role);
-    const lore   = safe(req.body?.lore);
+    // On choisit la version affichée si non vide, sinon la brute
+    const chosenLore = (typeof loreDisplay === 'string' && loreDisplay.trim())
+      ? loreDisplay
+      : (typeof loreRaw === 'string' ? loreRaw : '');
 
-    const metadata = { pseudo, genre, role };
+    // On peuple les métadonnées, plus un peu de debug (longueur + head)
+    const metadata = {
+      pseudo,
+      genre,
+      role,
+      lore_len: String((chosenLore || '').length),
+      lore_head: (chosenLore || '').slice(0, 80), // pour vérif rapide dans le dashboard
+    };
 
-    if (lore) {
-      // 450 chars max par clé pour rester large vs limite Stripe (500)
-      for (let i = 0; i < lore.length; i += 450) {
-        const chunk = lore.slice(i, i + 450).trim();
-        if (chunk) {
-          metadata[`lore_${Math.floor(i / 450) + 1}`] = chunk;
-        }
+    // Découpage en chunks <= 450 chars pour respecter 500 max / clé metadata
+    if (chosenLore) {
+      for (let i = 0; i < chosenLore.length; i += 450) {
+        metadata[`lore_${Math.floor(i / 450) + 1}`] = chosenLore.slice(i, i + 450);
       }
     }
 
