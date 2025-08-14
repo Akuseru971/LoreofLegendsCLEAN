@@ -120,31 +120,55 @@ export default function Home() {
   }, [lore]);
 
   const handleCheckout = async () => {
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        alert('Stripe failed to load on this device.');
-        return;
+  try {
+    const stripe = await stripePromise;
+    if (!stripe) {
+      alert('Stripe failed to load on this device.');
+      return;
+    }
+
+    const resp = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pseudo,
+        genre,
+        role,
+        loreRaw: lore || '',
+        loreDisplay: (displayedLore || '').trim(),
+      }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      console.error('checkout-session error payload:', data);
+      alert(data?.error || 'Server error creating checkout session.');
+      return;
+    }
+
+    if (data?.id) {
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (error) {
+        console.warn('redirectToCheckout failed, fallback to url if present:', error);
+        if (data?.url) window.location.href = data.url;
+        else alert(error.message || 'Unable to open Stripe Checkout.');
       }
+      return;
+    }
 
-      // Garantit qu’on envoie bien un texte non vide si présent à l’écran
-      const loreDisplayClean = (displayedLore || '').replace(/\r/g, '').trim();
-      const loreRawClean = (lore || '').replace(/\r/g, '').trim();
-      const loreToSend = loreRawClean.length > 0 ? loreRawClean : loreDisplayClean;
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
 
-      // Log côté navigateur pour vérifier
-      console.log('[Checkout] loreRawLen=', loreRawClean.length, 'loreDisplayLen=', loreDisplayClean.length, 'chosenLen=', loreToSend.length);
+    alert('No session returned by server.');
+  } catch (e) {
+    console.error('handleCheckout exception:', e);
+    alert(e?.message || 'Unexpected error starting checkout.');
+  }
+};
 
-      const payload = {
-        pseudo: pseudo || '',
-        genre: genre || '',
-        role: role || '',
-        // on envoie sous plusieurs noms pour être compatible avec n’importe quelle version du backend
-        loreRaw: loreRawClean,
-        loreDisplay: loreDisplayClean,
-        lore: loreToSend,
-        loreLen: String(loreToSend.length),
-      };
 
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
