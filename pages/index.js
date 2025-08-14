@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
@@ -74,6 +74,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
 
+  // 👉 ref sur le texte rendu (fallback DOM sûr)
+  const loreSpanRef = useRef(null);
+
   // iOS detection
   const isIOS =
     typeof navigator !== 'undefined' && /iP(hone|ad|od)/.test(navigator.userAgent);
@@ -102,7 +105,7 @@ export default function Home() {
     setLore(generated);
     setLoading(false);
 
-    // ✅ Sauvegarde locale pour sécuriser le passage au paiement
+    // ✅ Sauvegarde locale
     try {
       localStorage.setItem('lastLore', generated);
       localStorage.setItem('lastPseudo', pseudo || '');
@@ -129,7 +132,7 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  // ✅ Relit localStorage si l'état est vide, et envoie tout à l'API
+  // ✅ Fallbacks: state → localStorage → DOM → displayedLore
   const handleCheckout = async () => {
     try {
       const stripe = await stripePromise;
@@ -158,11 +161,24 @@ export default function Home() {
         }
       } catch {}
 
+      // 👉 Fallback DOM: on récupère exactement ce qui est rendu à l’écran
+      if (!loreRaw) {
+        const domText = loreSpanRef.current?.textContent?.trim() || '';
+        if (domText) {
+          loreRaw = domText.replace(/\s+\n/g, '\n').replace(/\n\s+/g, '\n');
+        }
+      }
+
+      // Dernier filet de sécurité
+      if (!loreRaw && displayedLore) {
+        loreRaw = displayedLore.trim();
+      }
+
       const body = {
         pseudo: pseudoToSend,
         genre: genreToSend,
         role: roleToSend,
-        loreRaw: loreRaw,
+        loreRaw,
         loreDisplay: (displayedLore || '').trim(),
       };
 
@@ -171,6 +187,7 @@ export default function Home() {
         ...body,
         loreRawLen: body.loreRaw.length,
         loreDisplayLen: body.loreDisplay.length,
+        loreHead: body.loreRaw.slice(0, 80),
       });
 
       const resp = await fetch('/api/checkout-session', {
@@ -302,7 +319,10 @@ export default function Home() {
           {lore && (
             <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
               <div className="lore-box bg-black text-white p-6 rounded-lg w-fit text-center text-md leading-relaxed shadow-lg mb-6">
-                <span className="whitespace-pre-line">{displayedLore}</span>
+                {/* 👉 ref pour récupérer exactement le texte affiché */}
+                <span ref={loreSpanRef} className="whitespace-pre-line">
+                  {displayedLore}
+                </span>
               </div>
               <button
                 className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
