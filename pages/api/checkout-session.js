@@ -12,46 +12,38 @@ export default async function handler(req, res) {
       apiVersion: '2023-10-16',
     });
 
-    const { pseudo = '', genre = '', role = '', lore = '' } = req.body || {};
+    const {
+      pseudo = '',
+      genre = '',
+      role  = '',
+      lore  = '',
+    } = req.body || {};
 
-    // Build metadata safely within Stripe limits (50 keys, 500 chars per value)
-    const metadata = {
-      pseudo,
-      genre,
-      role,
+    // Toujours des strings pour Stripe metadata
+    const meta = {
+      pseudo: String(pseudo || ''),
+      genre : String(genre  || ''),
+      role  : String(role   || ''),
     };
 
-    if (typeof lore === 'string' && lore.length) {
-      // Helpful preview in case chunks fail for any reason
-      metadata.lore_preview = lore.slice(0, 120);
-
-      // Chunk into <= 450 chars to stay well below Stripe 500-char field limit
-      const chunkSize = 450;
-      const chunks = [];
-      for (let i = 0; i < lore.length; i += chunkSize) {
-        chunks.push(lore.slice(i, i + chunkSize));
+    const loreStr = String(lore || '');
+    if (loreStr.length) {
+      // Découpage en blocs de 450 chars
+      for (let i = 0; i < loreStr.length; i += 450) {
+        meta[`lore_${Math.floor(i / 450) + 1}`] = loreStr.slice(i, i + 450);
       }
-      // Name chunks with left-padded indexes so they sort correctly lexicographically
-      const pad = String(chunks.length).length;
-      chunks.forEach((part, idx) => {
-        const key = `lore_${String(idx + 1).padStart(pad, '0')}`;
-        metadata[key] = part;
-      });
-      metadata.lore_chunks = String(chunks.length);
     } else {
-      metadata.lore_preview = '';
-      metadata.lore_chunks = '0';
+      // garde une trace explicite si vide
+      meta.lore_1 = '';
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      line_items: [
-        { price: process.env.STRIPE_PRICE_ID, quantity: 1 },
-      ],
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/`,
-      metadata,
+      cancel_url : `${req.headers.origin}/`,
+      metadata   : meta,
     });
 
     return res.status(200).json({ id: session.id, url: session.url });
