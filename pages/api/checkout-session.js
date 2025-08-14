@@ -14,12 +14,33 @@ export default async function handler(req, res) {
 
     const { pseudo = '', genre = '', role = '', lore = '' } = req.body || {};
 
-    // Split lore into 450-char chunks to fit Stripe metadata limits
-    const metadata = { pseudo, genre, role };
+    // Build metadata safely within Stripe limits (50 keys, 500 chars per value)
+    const metadata = {
+      pseudo,
+      genre,
+      role,
+    };
+
     if (typeof lore === 'string' && lore.length) {
-      for (let i = 0; i < lore.length; i += 450) {
-        metadata[`lore_${Math.floor(i / 450) + 1}`] = lore.slice(i, i + 450);
+      // Helpful preview in case chunks fail for any reason
+      metadata.lore_preview = lore.slice(0, 120);
+
+      // Chunk into <= 450 chars to stay well below Stripe 500-char field limit
+      const chunkSize = 450;
+      const chunks = [];
+      for (let i = 0; i < lore.length; i += chunkSize) {
+        chunks.push(lore.slice(i, i + chunkSize));
       }
+      // Name chunks with left-padded indexes so they sort correctly lexicographically
+      const pad = String(chunks.length).length;
+      chunks.forEach((part, idx) => {
+        const key = `lore_${String(idx + 1).padStart(pad, '0')}`;
+        metadata[key] = part;
+      });
+      metadata.lore_chunks = String(chunks.length);
+    } else {
+      metadata.lore_preview = '';
+      metadata.lore_chunks = '0';
     }
 
     const session = await stripe.checkout.sessions.create({
