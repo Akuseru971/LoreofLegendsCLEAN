@@ -1,3 +1,4 @@
+// pages/index.js
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -125,26 +126,39 @@ export default function Home() {
         alert('Stripe failed to load on this device.');
         return;
       }
-      // On envoie ET la version brute ET la version affichée
-      const body = {
-        pseudo,
-        genre,
-        role,
-        loreRaw: lore || '',
-        loreDisplay: (displayedLore || '').trim(),
+
+      // Garantit qu’on envoie bien un texte non vide si présent à l’écran
+      const loreDisplayClean = (displayedLore || '').replace(/\r/g, '').trim();
+      const loreRawClean = (lore || '').replace(/\r/g, '').trim();
+      const loreToSend = loreRawClean.length > 0 ? loreRawClean : loreDisplayClean;
+
+      // Log côté navigateur pour vérifier
+      console.log('[Checkout] loreRawLen=', loreRawClean.length, 'loreDisplayLen=', loreDisplayClean.length, 'chosenLen=', loreToSend.length);
+
+      const payload = {
+        pseudo: pseudo || '',
+        genre: genre || '',
+        role: role || '',
+        // on envoie sous plusieurs noms pour être compatible avec n’importe quelle version du backend
+        loreRaw: loreRawClean,
+        loreDisplay: loreDisplayClean,
+        lore: loreToSend,
+        loreLen: String(loreToSend.length),
       };
 
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
 
       const data = await resp.json();
       if (!resp.ok) {
+        console.error('checkout-session error:', data);
         alert(data?.error || 'Server error creating checkout session.');
         return;
       }
+
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
@@ -155,12 +169,15 @@ export default function Home() {
         alert(error.message || 'Unable to open Stripe Checkout.');
         return;
       }
+
       if (data?.url) {
         window.location.href = data.url;
         return;
       }
+
       alert('No session returned by server.');
     } catch (e) {
+      console.error('handleCheckout error:', e);
       alert('Unexpected error starting checkout.');
     }
   };
@@ -191,26 +208,19 @@ export default function Home() {
           <title>Lore of Legends</title>
         </Head>
 
-        {/* Stripe.js explicite */}
         <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
 
-        {/* Background video */}
         <video autoPlay loop muted className="absolute top-0 left-0 w-full h-full object-cover z-0">
           <source src="/background.mp4" type="video/mp4" />
         </video>
 
-        {/* Overlay */}
         <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-60 z-10" />
 
-        {/* Main Content */}
         <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
-          {/* Logo */}
           <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
 
-          {/* Title */}
           <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
 
-          {/* Form */}
           <div className="bg-black bg-opacity-40 p-6 rounded-lg backdrop-blur w-15 max-w-sm space-y-4">
             <select
               value={genre}
@@ -250,20 +260,18 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Carrousel en haut (visible seulement AVANT génération) */}
           {!lore && (
             <TopLoreCarousel
               items={[
-                { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
-                { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
-                { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
-                { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
-                { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
+                { name: 'Akuseru', video: '/top-lore/Akuseru.mp4', poster: '/top-lore/Akuseru.png' },
+                { name: 'Soukoupaks', video: '/top-lore/Soukoupaks.mp4', poster: '/top-lore/Soukoupaks.png' },
+                { name: 'Gabybixx', video: '/top-lore/Gabybixx.mp4', poster: '/top-lore/Gabybixx.png' },
+                { name: 'Kintesence', video: '/top-lore/Kintesence.mp4', poster: '/top-lore/Kintesence.png' },
+                { name: 'Kitou', video: '/top-lore/Kitou.mp4', poster: '/top-lore/Kitou.png' },
               ]}
             />
           )}
 
-          {/* Lore Output */}
           {lore && (
             <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
               <div className="lore-box bg-black text-white p-6 rounded-lg w-fit text-center text-md leading-relaxed shadow-lg mb-6">
@@ -276,14 +284,13 @@ export default function Home() {
                 Generate your Lore Video
               </button>
 
-              {/* Carrousel en bas (visible APRÈS génération) */}
               <TopLoreCarousel
                 items={[
-                  { name: 'Akuseru',     video: '/top-lore/Akuseru.mp4',     poster: '/top-lore/Akuseru.png' },
-                  { name: 'Soukoupaks',  video: '/top-lore/Soukoupaks.mp4',  poster: '/top-lore/Soukoupaks.png' },
-                  { name: 'Gabybixx',    video: '/top-lore/Gabybixx.mp4',    poster: '/top-lore/Gabybixx.png' },
-                  { name: 'Kintesence',  video: '/top-lore/Kintesence.mp4',  poster: '/top-lore/Kintesence.png' },
-                  { name: 'Kitou',       video: '/top-lore/Kitou.mp4',       poster: '/top-lore/Kitou.png' },
+                  { name: 'Akuseru', video: '/top-lore/Akuseru.mp4', poster: '/top-lore/Akuseru.png' },
+                  { name: 'Soukoupaks', video: '/top-lore/Soukoupaks.mp4', poster: '/top-lore/Soukoupaks.png' },
+                  { name: 'Gabybixx', video: '/top-lore/Gabybixx.mp4', poster: '/top-lore/Gabybixx.png' },
+                  { name: 'Kintesence', video: '/top-lore/Kintesence.mp4', poster: '/top-lore/Kintesence.png' },
+                  { name: 'Kitou', video: '/top-lore/Kitou.mp4', poster: '/top-lore/Kitou.png' },
                 ]}
               />
             </div>
@@ -291,7 +298,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Popup (desktop/Android) */}
       {showPopup && !isIOS && (
         <PopupPortal>
           <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
