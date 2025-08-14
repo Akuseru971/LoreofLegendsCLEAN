@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
+import * as ReactDOM from 'react-dom';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -36,6 +37,31 @@ function TopLoreCarousel({ items }) {
       </div>
     </div>
   );
+}
+
+// --- Portal Popup (rendu direct dans <body>) ---
+function PopupPortal({ children }) {
+  const [mounted, setMounted] = useState(false);
+  const container = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const el = document.createElement('div');
+    el.setAttribute('id', 'popup-root');
+    return el;
+  }, []);
+
+  useEffect(() => {
+    if (!container) return;
+    document.body.appendChild(container);
+    setMounted(true);
+    return () => {
+      try {
+        document.body.removeChild(container);
+      } catch {}
+    };
+  }, [container]);
+
+  if (!mounted || !container) return null;
+  return ReactDOM.createPortal(children, container);
 }
 
 export default function Home() {
@@ -129,6 +155,17 @@ export default function Home() {
     }
   };
 
+  // Lock du scroll en arrière-plan quand la popup est ouverte
+  useEffect(() => {
+    if (showPopup) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev || '';
+      };
+    }
+  }, [showPopup]);
+
   return (
     <>
       <div className="relative min-h-screen w-full overflow-hidden text-white font-serif">
@@ -218,53 +255,56 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Popup */}
+      {/* ===== Popup via PORTAL (body) pour iOS ===== */}
       {showPopup && (
-      <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
-    {/* wrapper collé tout en haut */}
-    <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
-      <div
-        className="relative bg-gray-900 text-white rounded-lg shadow-xl"
-        style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }} // pousse au plus haut
-      >
-        {/* Close */}
-        <button
-          className="absolute top-2 right-2 text-white text-2xl leading-none"
-          onClick={() => setShowPopup(false)}
-          aria-label="Close"
-        >
-          ✖
-        </button>
+        <PopupPortal>
+          <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
+            <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
+              <div
+                className="relative bg-gray-900 text-white rounded-lg shadow-xl"
+                style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }}
+                role="dialog"
+                aria-modal="true"
+              >
+                {/* Close */}
+                <button
+                  className="absolute top-2 right-2 text-white text-2xl leading-none"
+                  onClick={() => setShowPopup(false)}
+                  aria-label="Close"
+                >
+                  ✖
+                </button>
 
-        {/* Titre */}
-        <h2 className="text-lg md:text-xl font-bold text-center pt-3 px-4">
-          Your Lore is ready
-        </h2>
+                {/* Titre */}
+                <h2 className="text-lg md:text-xl font-bold text-center pt-3 px-4">
+                  Your Lore is ready
+                </h2>
 
-        {/* Contenu scrollable si besoin */}
-        <div className="px-4 pb-3 mt-2 overflow-y-auto" style={{ maxHeight: '64vh' }}>
-          <div className="rounded overflow-hidden">
-            <iframe
-              src="https://www.tiktok.com/embed/v2/7529586683185040662"
-              className="w-full h-[42vh] md:h-[58vh] rounded"
-              allowFullScreen
-            />
+                {/* Contenu scrollable si besoin */}
+                <div className="px-4 pb-3 mt-2 overflow-y-auto" style={{ maxHeight: '64vh' }}>
+                  <div className="rounded overflow-hidden">
+                    <iframe
+                      src="https://www.tiktok.com/embed/v2/7529586683185040662"
+                      className="w-full h-[42vh] md:h-[58vh] rounded"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+
+                {/* Footer sticky pour garder le bouton visible */}
+                <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur rounded-b-lg">
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+                  >
+                    Purchase your Lore Video
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Footer sticky pour garder le bouton visible */}
-        <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur rounded-b-lg">
-          <button
-            onClick={handleCheckout}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
-          >
-            Purchase your Lore Video
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+        </PopupPortal>
+      )}
     </>
   );
 }
