@@ -12,29 +12,23 @@ export default async function handler(req, res) {
       apiVersion: '2023-10-16',
     });
 
-    const {
-      pseudo = '',
-      genre = '',
-      role  = '',
-      lore  = '',
-    } = req.body || {};
+    const safe = (v) => (typeof v === 'string' ? v.trim() : '');
 
-    // Toujours des strings pour Stripe metadata
-    const meta = {
-      pseudo: String(pseudo || ''),
-      genre : String(genre  || ''),
-      role  : String(role   || ''),
-    };
+    const pseudo = safe(req.body?.pseudo);
+    const genre  = safe(req.body?.genre);
+    const role   = safe(req.body?.role);
+    const lore   = safe(req.body?.lore);
 
-    const loreStr = String(lore || '');
-    if (loreStr.length) {
-      // Découpage en blocs de 450 chars
-      for (let i = 0; i < loreStr.length; i += 450) {
-        meta[`lore_${Math.floor(i / 450) + 1}`] = loreStr.slice(i, i + 450);
+    const metadata = { pseudo, genre, role };
+
+    if (lore) {
+      // 450 chars max par clé pour rester large vs limite Stripe (500)
+      for (let i = 0; i < lore.length; i += 450) {
+        const chunk = lore.slice(i, i + 450).trim();
+        if (chunk) {
+          metadata[`lore_${Math.floor(i / 450) + 1}`] = chunk;
+        }
       }
-    } else {
-      // garde une trace explicite si vide
-      meta.lore_1 = '';
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -42,8 +36,8 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url : `${req.headers.origin}/`,
-      metadata   : meta,
+      cancel_url: `${req.headers.origin}/`,
+      metadata,
     });
 
     return res.status(200).json({ id: session.id, url: session.url });

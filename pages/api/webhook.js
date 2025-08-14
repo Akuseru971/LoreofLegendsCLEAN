@@ -3,16 +3,15 @@ import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
 
 export const config = {
-  api: { bodyParser: false }, // Stripe nécessite le raw body
+  api: { bodyParser: false },
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// lire le raw body
 async function getRawBody(req) {
   return await new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (c) => chunks.push(c));
+    req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
@@ -25,11 +24,7 @@ export default async function handler(req, res) {
   try {
     const rawBody = await getRawBody(req);
     const signature = req.headers['stripe-signature'];
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('❌ Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -39,36 +34,33 @@ export default async function handler(req, res) {
     const session = event.data.object;
 
     const pseudo = session.metadata?.pseudo || 'Unknown Summoner';
-    const genre  = session.metadata?.genre  || '';
-    const role   = session.metadata?.role   || '';
+    const customerEmail = session.customer_details?.email;
 
-    // Réassemblage du lore : lore_1, lore_2, ...
-    let loreParts = [];
-    if (session.metadata) {
-      loreParts = Object.entries(session.metadata)
-        .filter(([k]) => /^lore_\d+$/.test(k))
-        .sort((a, b) => {
-          const ai = parseInt(a[0].split('_')[1], 10);
-          const bi = parseInt(b[0].split('_')[1], 10);
-          return ai - bi;
-        })
-        .map(([, v]) => String(v ?? ''));
+    // Reconstruire le lore à partir des chunks lore_1..lore_n
+    let lore = '';
+    for (let i = 1; i <= 50; i++) {
+      const key = `lore_${i}`;
+      const val = session.metadata?.[key];
+      if (typeof val === 'string' && val.trim().length > 0) {
+        lore += val; // concat direct (on a déjà des retours à la ligne dans le chunk)
+      } else if (!val) {
+        // on s'arrête dès qu’une clé manque (on a fini la séquence)
+        break;
+      }
     }
-    let lore = loreParts.join('');
-    if (!lore) {
-      // secours si jamais un ancien format "lore" unique était utilisé
-      lore = String(session.metadata?.lore ?? '');
+    // Fallback si jamais tu avais un seul champ "lore"
+    if (!lore && typeof session.metadata?.lore === 'string') {
+      lore = session.metadata.lore;
     }
 
-    const customerEmail = session.customer_details?.email || '';
-
+    // Transport mail
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,                 // p.ex. smtp.gmail.com
+      host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 465),
-      secure: process.env.SMTP_SECURE === 'true',  // true si 465
+      secure: process.env.SMTP_SECURE === 'true',
       auth: {
-        user: process.env.SMTP_USER,               // votre email
-        pass: process.env.SMTP_PASS,               // mot de passe/app password
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
 
@@ -78,15 +70,11 @@ export default async function handler(req, res) {
         from: process.env.SENDER_EMAIL,
         to: process.env.ADMIN_EMAIL,
         subject: `New Lore Purchase - ${pseudo}`,
-        text:
-`Pseudo: ${pseudo}
-Genre: ${genre}
-Role: ${role}
-Customer Email: ${customerEmail || 'unknown'}
+        text: `Pseudo: ${pseudo}
+Email client: ${customerEmail || 'unknown'}
 
 Lore:
-${lore || '(empty)'}
-`,
+${lore || '(empty)'}`,
       });
     } catch (err) {
       console.error('❌ Envoi mail admin échoué:', err);
@@ -99,12 +87,7 @@ ${lore || '(empty)'}
           from: process.env.SENDER_EMAIL,
           to: customerEmail,
           subject: `Your personalized Lore - ${pseudo}`,
-          text:
-`Here is your lore:
-
-${lore || '(empty)'}
-
-Thanks for your support!`,
+          text: `${lore || '(empty)'}\n\nThanks for your support!`,
         });
       } catch (err) {
         console.error('❌ Envoi mail client échoué:', err);

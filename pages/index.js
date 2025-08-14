@@ -118,23 +118,46 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  const handleCheckout = async () => {
+  // ... le reste de ton fichier inchangé
+
+const handleCheckout = async () => {
   try {
     const stripe = await stripePromise;
     if (!stripe) {
       alert('Stripe failed to load on this device.');
       return;
     }
+
+    // Priorité au texte affiché (avec sa mise en forme), sinon texte brut
+    const payloadLore =
+      (displayedLore && displayedLore.trim().length > 0 ? displayedLore : lore || '').trim();
+
+    if (!payloadLore) {
+      alert('Generate your lore first, then try again.');
+      return;
+    }
+
+    const body = {
+      pseudo: (pseudo || '').trim(),
+      genre: (genre || '').trim(),
+      role: (role || '').trim(),
+      lore: payloadLore, // <-- on envoie le vrai texte
+    };
+
     const resp = await fetch('/api/checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pseudo, genre, role, lore }), // <-- send everything
+      body: JSON.stringify(body),
     });
+
     const data = await resp.json();
+
     if (!resp.ok) {
+      console.error('API checkout-session non OK:', data);
       alert(data?.error || 'Server error creating checkout session.');
       return;
     }
+
     if (data?.id) {
       const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
       if (!error) return;
@@ -145,12 +168,15 @@ export default function Home() {
       alert(error.message || 'Unable to open Stripe Checkout.');
       return;
     }
+
     if (data?.url) {
       window.location.href = data.url;
       return;
     }
+
     alert('No session returned by server.');
   } catch (e) {
+    console.error('handleCheckout error:', e);
     alert('Unexpected error starting checkout.');
   }
 };
