@@ -1,59 +1,117 @@
-// pages/api/checkout-session.js
-import Stripe from 'stripe';
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
-
-    const {
-      pseudo = '',
-      genre = '',
-      role = '',
-      loreRaw = '',
-      loreDisplay = '',
-    } = req.body || {};
-
-    // Choisir la meilleure source de vérité
-    const lore = (typeof loreDisplay === 'string' && loreDisplay.trim().length > 0)
-      ? loreDisplay
-      : (typeof loreRaw === 'string' ? loreRaw : '');
-
-    const metadata = {
-      pseudo,
-      genre,
-      role,
-      lore_len: String(lore.length || 0),
-      lore_head: lore.slice(0, 120), // utile pour vérifier rapidement côté Stripe
-    };
-
-    // Chunks (max ~10 * 450 = ~4500 chars) pour rester sous les limites Stripe
-    if (lore && lore.length) {
-      const CHUNK = 450;
-      const MAX_CHUNKS = 10;
-      const total = Math.min(Math.ceil(lore.length / CHUNK), MAX_CHUNKS);
-      for (let i = 0; i < total; i++) {
-        const start = i * CHUNK;
-        metadata[`lore_${i + 1}`] = lore.slice(start, start + CHUNK);
+{
+  "object": {
+    "id": "cs_live_a1gXOqT2QuLxscJROAMqUD3Dx7OgYVCK5LjVJJ1mCTyBinWZNhyluwHpvB",
+    "object": "checkout.session",
+    "adaptive_pricing": {
+      "enabled": true
+    },
+    "after_expiration": null,
+    "allow_promotion_codes": null,
+    "amount_subtotal": 899,
+    "amount_total": 899,
+    "automatic_tax": {
+      "enabled": false,
+      "liability": null,
+      "provider": null,
+      "status": null
+    },
+    "billing_address_collection": null,
+    "cancel_url": "https://loreof-legends-clean.vercel.app/",
+    "client_reference_id": null,
+    "client_secret": null,
+    "collected_information": null,
+    "consent": null,
+    "consent_collection": null,
+    "created": 1755191631,
+    "currency": "eur",
+    "currency_conversion": null,
+    "custom_fields": [],
+    "custom_text": {
+      "after_submit": null,
+      "shipping_address": null,
+      "submit": null,
+      "terms_of_service_acceptance": null
+    },
+    "customer": null,
+    "customer_creation": "if_required",
+    "customer_details": {
+      "address": {
+        "city": "Annemasse",
+        "country": "FR",
+        "line1": "1 Rue d'Étrembières",
+        "line2": "",
+        "postal_code": "74100",
+        "state": ""
+      },
+      "email": "super_axell@hotmail.fr",
+      "name": "Axell Valentino",
+      "phone": null,
+      "tax_exempt": "none",
+      "tax_ids": []
+    },
+    "customer_email": null,
+    "discounts": [],
+    "expires_at": 1755278031,
+    "invoice": null,
+    "invoice_creation": {
+      "enabled": false,
+      "invoice_data": {
+        "account_tax_ids": null,
+        "custom_fields": null,
+        "description": null,
+        "footer": null,
+        "issuer": null,
+        "metadata": {},
+        "rendering_options": null
       }
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/`,
-      metadata,
-    });
-
-    return res.status(200).json({ id: session.id, url: session.url });
-  } catch (err) {
-    console.error('checkout-session error:', err);
-    return res.status(500).json({ error: 'Failed to create checkout session' });
-  }
+    },
+    "livemode": true,
+    "locale": null,
+    "metadata": {
+      "genre": "",
+      "lore_head": "",
+      "lore_len": "0",
+      "pseudo": "gugu",
+      "role": ""
+    },
+    "mode": "payment",
+    "origin_context": null,
+    "payment_intent": "pi_3Rw4ixRucvVi6Qrx0JY6zIyD",
+    "payment_link": null,
+    "payment_method_collection": "if_required",
+    "payment_method_configuration_details": null,
+    "payment_method_options": {
+      "card": {
+        "request_three_d_secure": "automatic"
+      }
+    },
+    "payment_method_types": [
+      "card"
+    ],
+    "payment_status": "paid",
+    "permissions": null,
+    "phone_number_collection": {
+      "enabled": false
+    },
+    "recovered_from": null,
+    "saved_payment_method_options": null,
+    "setup_intent": null,
+    "shipping_address_collection": null,
+    "shipping_cost": null,
+    "shipping_details": null,
+    "shipping_options": [],
+    "status": "complete",
+    "submit_type": null,
+    "subscription": null,
+    "success_url": "https://loreof-legends-clean.vercel.app/success?session_id={CHECKOUT_SESSION_ID}",
+    "total_details": {
+      "amount_discount": 0,
+      "amount_shipping": 0,
+      "amount_tax": 0
+    },
+    "ui_mode": "hosted",
+    "url": null,
+    "wallet_options": null
+  },
+  "previous_attributes": null
 }
