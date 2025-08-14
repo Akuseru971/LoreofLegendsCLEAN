@@ -98,8 +98,17 @@ export default function Home() {
       body: JSON.stringify({ pseudo, genre, role }),
     });
     const data = await response.json();
-    setLore(data.lore || '');
+    const generated = data.lore || '';
+    setLore(generated);
     setLoading(false);
+
+    // ✅ Sauvegarde locale pour sécuriser le passage au paiement
+    try {
+      localStorage.setItem('lastLore', generated);
+      localStorage.setItem('lastPseudo', pseudo || '');
+      localStorage.setItem('lastGenre', genre || '');
+      localStorage.setItem('lastRole', role || '');
+    } catch {}
   };
 
   // machine à écrire + retour à la ligne ~tous les 10 mots
@@ -120,7 +129,7 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  // ✅ Fonction corrigée (pas de fragments hors try/catch)
+  // ✅ Relit localStorage si l'état est vide, et envoie tout à l'API
   const handleCheckout = async () => {
     try {
       const stripe = await stripePromise;
@@ -129,14 +138,40 @@ export default function Home() {
         return;
       }
 
-      // On envoie la version brute ET la version affichée
+      let loreRaw = lore || '';
+      let pseudoToSend = pseudo || '';
+      let genreToSend = genre || '';
+      let roleToSend  = role  || '';
+
+      try {
+        if (!loreRaw && typeof window !== 'undefined') {
+          loreRaw = localStorage.getItem('lastLore') || '';
+        }
+        if (!pseudoToSend && typeof window !== 'undefined') {
+          pseudoToSend = localStorage.getItem('lastPseudo') || '';
+        }
+        if (!genreToSend && typeof window !== 'undefined') {
+          genreToSend = localStorage.getItem('lastGenre') || '';
+        }
+        if (!roleToSend && typeof window !== 'undefined') {
+          roleToSend = localStorage.getItem('lastRole') || '';
+        }
+      } catch {}
+
       const body = {
-        pseudo,
-        genre,
-        role,
-        loreRaw: lore || '',
+        pseudo: pseudoToSend,
+        genre: genreToSend,
+        role: roleToSend,
+        loreRaw: loreRaw,
         loreDisplay: (displayedLore || '').trim(),
       };
+
+      // Debug utile côté navigateur
+      console.log('Checkout payload:', {
+        ...body,
+        loreRawLen: body.loreRaw.length,
+        loreDisplayLen: body.loreDisplay.length,
+      });
 
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
