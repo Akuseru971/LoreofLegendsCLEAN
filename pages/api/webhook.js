@@ -4,16 +4,17 @@ import nodemailer from 'nodemailer';
 
 export const config = {
   api: {
-    bodyParser: false, // Stripe needs the raw body
+    bodyParser: false, // Stripe a besoin du raw body pour vérifier la signature
   },
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// --- util: lire le raw body depuis le stream Node (obligatoire pour signature Stripe) ---
 async function getRawBody(req) {
   return await new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (c) => chunks.push(c));
+    req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
@@ -42,65 +43,58 @@ export default async function handler(req, res) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
-    // --- Rebuild lore from metadata robustly ---
-    const md = session.metadata || {};
-    const keys = Object.keys(md);
-    console.log('🔎 Metadata keys on session:', keys);
-
-    // Gather all lore_### keys and sort
-    const loreParts = keys
-      .filter((k) => /^lore_\d+/.test(k))
-      .sort()
-      .map((k) => md[k]);
-
-    // Fallbacks: joined chunks -> single lore -> preview -> empty
-    const lore =
-      (loreParts.length ? loreParts.join('') : '') ||
-      md.lore ||
-      md.lore_preview ||
-      '';
-
-    const pseudo = md.pseudo || 'Unknown Summoner';
-    const genre  = md.genre  || '';
-    const role   = md.role   || '';
+    const pseudo = session.metadata?.pseudo || 'Unknown Summoner';
+    const genre  = session.metadata?.genre  || '';
+    const role   = session.metadata?.role   || '';
     const customerEmail = session.customer_details?.email;
 
-    console.log('✅ Rebuilt lore length:', lore.length);
-    console.log('👤 Pseudo:', pseudo, '📧 Customer:', customerEmail);
+    // 🔧 RECONSTRUCTION DU LORE À PARTIR DES CHUNKS lore_1, lore_2, ...
+    const loreParts = [];
+    Object.keys(session.metadata || {})
+      .filter((k) => k.startsWith('lore_'))
+      .sort((a, b) => {
+        const ai = parseInt(a.split('_')[1], 10);
+        const bi = parseInt(b.split('_')[1], 10);
+        return ai - bi;
+      })
+      .forEach((k) => loreParts.push(session.metadata[k]));
+    const lore = loreParts.join('') || 'Lore not found';
 
-    // --- Mail transport ---
+    // ✉️ Transport mail (via tes variables d'env, ex: Gmail SMTP)
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,               // e.g. smtp.gmail.com
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: process.env.SMTP_SECURE === 'true', // true for 465
+      host: process.env.SMTP_HOST,                 // ex: smtp.gmail.com
+      port: Number(process.env.SMTP_PORT || 465),  // 465 si secure=true / 587 si secure=false
+      secure: process.env.SMTP_SECURE === 'true',  // 'true' => TLS implicite (465)
       auth: {
-        user: process.env.SMTP_USER,             // full email or username
-        pass: process.env.SMTP_PASS,             // app password / SMTP password
+        user: process.env.SMTP_USER,               // ton email
+        pass: process.env.SMTP_PASS,               // ton app password
       },
     });
 
-    // Admin email (to you)
+    // 👑 Mail admin: récap commande + lore
     try {
       await transporter.sendMail({
         from: process.env.SENDER_EMAIL,
-        to: process.env.ADMIN_EMAIL,
+        to: process.env.ADMIN_EMAIL, // ton mail admin
         subject: `New Lore Purchase - ${pseudo}`,
         text:
-`Pseudo: ${pseudo}
+`New purchase received!
+
+Pseudo: ${pseudo}
+Email client: ${customerEmail || 'unknown'}
 Genre: ${genre}
 Role: ${role}
-Email client: ${customerEmail || 'unknown'}
 
-Lore:
-${lore || '(empty)'}
+--- LORE ---
+${lore}
 `,
       });
-      console.log('📫 Admin email sent');
+      console.log('✅ Mail admin envoyé.');
     } catch (err) {
-      console.error('❌ Admin email failed:', err);
+      console.error('❌ Envoi mail admin échoué:', err);
     }
 
-    // Customer email (to buyer)
+    // 📦 Mail client: envoi du lore
     if (customerEmail) {
       try {
         await transporter.sendMail({
@@ -108,18 +102,24 @@ ${lore || '(empty)'}
           to: customerEmail,
           subject: `Your personalized Lore - ${pseudo}`,
           text:
-`Here is your lore:
+`Hi ${pseudo},
 
-${lore || '(empty)'}
+Here is your personalized Runeterra Lore:
 
-Thanks for your support!`,
+${lore}
+
+Thanks for your support!
+`,
         });
-        console.log('📫 Customer email sent');
+        console.log('✅ Mail client envoyé.');
       } catch (err) {
-        console.error('❌ Customer email failed:', err);
+        console.error('❌ Envoi mail client échoué:', err);
       }
+    } else {
+      console.warn('⚠️ Pas d’email client dans la session Stripe, mail client non envoyé.');
     }
   }
 
+  // Réponse OK pour Stripe
   res.json({ received: true });
 }
