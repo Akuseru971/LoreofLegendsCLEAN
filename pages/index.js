@@ -180,7 +180,7 @@ export default function Home() {
         return;
       }
 
-      // 🔒 1) Mettre en cache côté serveur via cookie HttpOnly
+      // 🔒 1) Mettre en cache côté serveur via cookie HttpOnly (optionnel mais utile)
       await fetch('/api/cache-lore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +192,7 @@ export default function Home() {
         }),
       });
 
-      // 2) Créer la session (on peut continuer d’envoyer le body, c’est optionnel)
+      // 2) Créer la session — IMPORTANT : on envoie sous la clé "lore"
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,8 +200,7 @@ export default function Home() {
           pseudo: pseudoToSend,
           genre: genreToSend,
           role: roleToSend,
-          loreRaw,
-          loreDisplay: (displayedLore || '').trim(),
+          lore: loreRaw, // << clé attendue par l'API
         }),
       });
 
