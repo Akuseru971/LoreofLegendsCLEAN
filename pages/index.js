@@ -4,10 +4,10 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
 import { loadStripe } from '@stripe/stripe-js';
-import * as ReactDOM from 'react-dom';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
+// --- Carrousel réutilisable ---
 function TopLoreCarousel({ items }) {
   return (
     <div className="w-full flex flex-col items-center mt-10">
@@ -37,28 +37,6 @@ function TopLoreCarousel({ items }) {
       </div>
     </div>
   );
-}
-
-function PopupPortal({ children }) {
-  const [mounted, setMounted] = useState(false);
-  const container = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    const el = document.createElement('div');
-    el.setAttribute('id', 'popup-root');
-    return el;
-  }, []);
-
-  useEffect(() => {
-    if (!container) return;
-    document.body.appendChild(container);
-    setMounted(true);
-    return () => {
-      try { document.body.removeChild(container); } catch {}
-    };
-  }, [container]);
-
-  if (!mounted || !container) return null;
-  return ReactDOM.createPortal(children, container);
 }
 
 export default function Home() {
@@ -104,6 +82,7 @@ export default function Home() {
     } catch {}
   };
 
+  // machine à écrire + retour à la ligne ~tous les 10 mots
   useEffect(() => {
     if (!lore) return;
     const words = lore.split(' ');
@@ -117,6 +96,17 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
+  // fermeture via ESC (desktop/Android)
+  useEffect(() => {
+    if (!showPopup || isIOS) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowPopup(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPopup, isIOS]);
+
+  // Checkout avec fallbacks
   const handleCheckout = async () => {
     try {
       const stripe = await stripePromise;
@@ -125,7 +115,6 @@ export default function Home() {
         return;
       }
 
-      // 1) Récup lore depuis state / localStorage / DOM / displayedLore
       let loreRaw = lore || '';
       let pseudoToSend = pseudo || '';
       let genreToSend = genre || '';
@@ -155,13 +144,11 @@ export default function Home() {
       if (!loreRaw && displayedLore) {
         loreRaw = displayedLore.trim();
       }
-
       if (!loreRaw) {
         alert('Please generate your lore first before purchasing.');
         return;
       }
 
-      // 2) Envoi JSON + Header base64 redondant
       const b64 = typeof window !== 'undefined'
         ? btoa(unescape(encodeURIComponent(loreRaw)))
         : '';
@@ -170,7 +157,7 @@ export default function Home() {
         pseudo: pseudoToSend,
         genre: genreToSend,
         role: roleToSend,
-        lore: loreRaw,                 // <- plein pot
+        lore: loreRaw,
         loreDisplay: (displayedLore || '').trim(),
       };
 
@@ -184,7 +171,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-lore-b64': b64, // <- canal n°2
+          'x-lore-b64': b64,
         },
         body: JSON.stringify(payload),
       });
@@ -220,6 +207,7 @@ export default function Home() {
     }
   };
 
+  // Lock scroll arrière-plan (desktop/Android)
   useEffect(() => {
     if (showPopup && !isIOS) {
       const prev = document.body.style.overflow;
@@ -277,27 +265,52 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Popup inline (desktop/Android) */}
       {showPopup && !isIOS && (
-        <PopupPortal>
-          <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
-            <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
-              <div className="relative bg-gray-900 text-white rounded-lg shadow-xl" style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }} role="dialog" aria-modal="true">
-                <button className="absolute top-2 right-2 text-white text-2xl leading-none" onClick={() => setShowPopup(false)} aria-label="Close">✖</button>
-                <h2 className="text-lg md:text-xl font-bold text-center pt-3 px-4">Your Lore is ready</h2>
-                <div className="px-4 pb-3 mt-2 overflow-y-auto" style={{ maxHeight: '64vh' }}>
-                  <div className="rounded overflow-hidden">
-                    <iframe src="https://www.tiktok.com/embed/v2/7529586683185040662" className="w-full h-[42vh] md:h-[58vh] rounded" allow="autoplay; fullscreen; clipboard-write" allowFullScreen />
-                  </div>
+        <div
+          className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4 pointer-events-auto">
+            <div
+              className="relative bg-gray-900 text-white rounded-lg shadow-xl"
+              style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }}
+            >
+              <button
+                className="absolute top-2 right-2 text-white text-2xl leading-none"
+                onClick={() => setShowPopup(false)}
+                aria-label="Close"
+              >
+                ✖
+              </button>
+
+              <h2 className="text-lg md:text-xl font-bold text-center pt-3 px-4">
+                Your Lore is ready
+              </h2>
+
+              <div className="px-4 pb-3 mt-2 overflow-y-auto" style={{ maxHeight: '64vh' }}>
+                <div className="rounded overflow-hidden">
+                  <iframe
+                    src="https://www.tiktok.com/embed/v2/7529586683185040662"
+                    className="w-full h-[42vh] md:h-[58vh] rounded"
+                    allow="autoplay; fullscreen; clipboard-write"
+                    allowFullScreen
+                  />
                 </div>
-                <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur rounded-b-lg">
-                  <button onClick={handleCheckout} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg">
-                    Purchase your Lore Video
-                  </button>
-                </div>
+              </div>
+
+              <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-gray-900/95 backdrop-blur rounded-b-lg">
+                <button
+                  onClick={handleCheckout}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+                >
+                  Purchase your Lore Video
+                </button>
               </div>
             </div>
           </div>
-        </PopupPortal>
+        </div>
       )}
     </>
   );
