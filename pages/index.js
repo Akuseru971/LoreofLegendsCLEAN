@@ -180,28 +180,29 @@ export default function Home() {
         return;
       }
 
-      const body = {
-        pseudo: pseudoToSend,
-        genre: genreToSend,
-        role: roleToSend,
-        loreRaw,
-        loreDisplay: (displayedLore || '').trim(),
-      };
-
-      // Debug utile côté navigateur
-      console.log('Checkout payload:', {
-        pseudo: body.pseudo,
-        genre: body.genre,
-        role: body.role,
-        loreRawLen: body.loreRaw.length,
-        loreDisplayLen: body.loreDisplay.length,
-        loreHead: body.loreRaw.slice(0, 80),
+      // 🔒 1) Mettre en cache côté serveur via cookie HttpOnly
+      await fetch('/api/cache-lore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pseudo: pseudoToSend,
+          genre: genreToSend,
+          role: roleToSend,
+          lore: loreRaw,
+        }),
       });
 
+      // 2) Créer la session (on peut continuer d’envoyer le body, c’est optionnel)
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          pseudo: pseudoToSend,
+          genre: genreToSend,
+          role: roleToSend,
+          loreRaw,
+          loreDisplay: (displayedLore || '').trim(),
+        }),
       });
 
       const data = await resp.json().catch(() => ({}));
