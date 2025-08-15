@@ -25,22 +25,34 @@ export default async function handler(req, res) {
       pseudo = '',
       genre = '',
       role = '',
-      lore = '',           // <- on attend cette clé
-      loreRaw = '',        // (fallback)
-      loreDisplay = '',    // (fallback)
+      lore = '',
+      loreRaw = '',
+      loreDisplay = '',
     } = req.body || {};
 
-    // 1) On choisit la meilleure source de texte
-    let fullLore = (lore || loreRaw || '').toString().trim();
+    // 1) Deux sources possibles: body ET/OU header base64
+    let headerLore = '';
+    try {
+      const b64 = req.headers['x-lore-b64'];
+      if (typeof b64 === 'string' && b64.length) {
+        headerLore = Buffer.from(b64, 'base64').toString('utf8');
+      }
+    } catch {}
 
-    // 2) Découpe en chunks (si vide, on enverra quand même lore_len=0)
-    const metadata = {
-      pseudo,
-      genre,
-      role,
-    };
+    let fullLore = (lore || loreRaw || headerLore || '').toString().trim();
 
+    // Debug serveur (visible dans logs Vercel)
+    console.log('[checkout-session] lengths:', {
+      bodyLoreLen: (lore || '').length,
+      loreRawLen: (loreRaw || '').length,
+      headerLoreLen: (headerLore || '').length,
+      chosenLen: fullLore.length,
+      head: fullLore.slice(0, 80),
+    });
+
+    const metadata = { pseudo, genre, role };
     const chunks = fullLore ? splitIntoChunks(fullLore, 450) : [];
+
     if (chunks.length > 0) {
       chunks.forEach((part, idx) => {
         metadata[`lore_${idx + 1}`] = part;
@@ -48,12 +60,11 @@ export default async function handler(req, res) {
       metadata.lore_head = fullLore.slice(0, 80);
       metadata.lore_len = String(fullLore.length);
     } else {
-      metadata.lore = '';           // pour voir clairement côté Stripe
+      metadata.lore = '';
       metadata.lore_head = '';
       metadata.lore_len = '0';
     }
 
-    // 3) Crée la session, + expand pour récupérer le PaymentIntent si besoin
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -64,7 +75,7 @@ export default async function handler(req, res) {
       expand: ['payment_intent'],
     });
 
-    // 4) (Optionnel mais robuste) Dépose aussi sur le PaymentIntent (mêmes clés)
+    // Duplique sur le PI aussi (robuste pour le webhook)
     if (session?.payment_intent && typeof session.payment_intent === 'object') {
       const piId = session.payment_intent.id || session.payment_intent;
       try {
