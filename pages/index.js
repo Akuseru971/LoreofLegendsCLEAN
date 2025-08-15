@@ -39,12 +39,14 @@ function TopLoreCarousel({ items }) {
   );
 }
 
+/* ==== Portal robuste : fallback inline si non monté ==== */
 function PopupPortal({ children }) {
   const [mounted, setMounted] = useState(false);
   const container = useMemo(() => {
     if (typeof window === 'undefined') return null;
     const el = document.createElement('div');
     el.setAttribute('id', 'popup-root');
+    el.style.position = 'relative';
     return el;
   }, []);
 
@@ -53,13 +55,14 @@ function PopupPortal({ children }) {
     document.body.appendChild(container);
     setMounted(true);
     return () => {
-      try {
-        document.body.removeChild(container);
-      } catch (e) {}
+      try { document.body.removeChild(container); } catch (e) {}
     };
   }, [container]);
 
-  if (!mounted || !container) return null;
+  // Fallback inline si pas monté
+  if (!mounted || !container) {
+    return <>{children}</>;
+  }
   return ReactDOM.createPortal(children, container);
 }
 
@@ -174,12 +177,6 @@ export default function Home() {
         loreDisplay: (displayedLore || '').trim(),
       };
 
-      console.log('Checkout payload (front):', {
-        ...payload,
-        loreLen: payload.lore.length,
-        head: payload.lore.slice(0, 80),
-      });
-
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
         headers: {
@@ -191,7 +188,6 @@ export default function Home() {
 
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        console.error('checkout-session error:', data);
         alert(data?.error || 'Server error creating checkout session.');
         return;
       }
@@ -199,7 +195,6 @@ export default function Home() {
       if (data?.id) {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
         if (!error) return;
-        console.warn('redirectToCheckout error, fallback to URL if present:', error);
         if (data?.url) {
           window.location.href = data.url;
           return;
@@ -215,7 +210,6 @@ export default function Home() {
 
       alert('No session returned by server.');
     } catch (e) {
-      console.error('handleCheckout exception:', e);
       alert(e?.message || 'Unexpected error starting checkout.');
     }
   };
@@ -279,6 +273,7 @@ export default function Home() {
 
       {showPopup && !isIOS && (
         <PopupPortal>
+          {/* Fallback inline rendu ici si le portal n'est pas monté */}
           <div className="fixed inset-0 z-[1000] bg-black/70 flex items-start justify-center overflow-y-auto">
             <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
               <div className="relative bg-gray-900 text-white rounded-lg shadow-xl" style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }} role="dialog" aria-modal="true">
