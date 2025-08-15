@@ -1,5 +1,14 @@
 // pages/api/checkout-session.js
+/* eslint-disable @typescript-eslint/no-var-requires */
 import Stripe from 'stripe';
+
+function splitIntoChunks(str, size = 450) {
+  const chunks = [];
+  for (let i = 0; i < str.length; i += size) {
+    chunks.push(str.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,38 +25,35 @@ export default async function handler(req, res) {
       pseudo = '',
       genre = '',
       role = '',
-      lore = '',
-      loreRaw = '',
-      loreDisplay = '',
+      lore = '',           // <- on attend cette clé
+      loreRaw = '',        // (fallback)
+      loreDisplay = '',    // (fallback)
     } = req.body || {};
 
-    // ✅ Choix le plus fiable envoyé par le front
-    const loreInput =
-      (typeof lore === 'string' && lore.length ? lore : '') ||
-      (typeof loreRaw === 'string' && loreRaw.length ? loreRaw : '') ||
-      (typeof loreDisplay === 'string' && loreDisplay.length ? loreDisplay : '');
+    // 1) On choisit la meilleure source de texte
+    let fullLore = (lore || loreRaw || '').toString().trim();
 
-    // Stripe metadata ≤ 500 chars/clé
-    const chunkSize = 450;
-    const metadata = { pseudo, genre, role };
+    // 2) Découpe en chunks (si vide, on enverra quand même lore_len=0)
+    const metadata = {
+      pseudo,
+      genre,
+      role,
+    };
 
-    if (loreInput && loreInput.length > 0) {
-      if (loreInput.length <= chunkSize) {
-        metadata.lore = loreInput;
-      } else {
-        let part = 1;
-        for (let i = 0; i < loreInput.length; i += chunkSize) {
-          metadata[`lore_${part}`] = loreInput.slice(i, i + chunkSize);
-          part++;
-        }
-        metadata.lore_parts = String(part - 1);
-      }
-      metadata.lore_len = String(loreInput.length);
+    const chunks = fullLore ? splitIntoChunks(fullLore, 450) : [];
+    if (chunks.length > 0) {
+      chunks.forEach((part, idx) => {
+        metadata[`lore_${idx + 1}`] = part;
+      });
+      metadata.lore_head = fullLore.slice(0, 80);
+      metadata.lore_len = String(fullLore.length);
     } else {
-      metadata.lore = '';
+      metadata.lore = '';           // pour voir clairement côté Stripe
+      metadata.lore_head = '';
       metadata.lore_len = '0';
     }
 
+    // 3) Crée la session, + expand pour récupérer le PaymentIntent si besoin
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -55,10 +61,18 @@ export default async function handler(req, res) {
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/`,
       metadata,
-      payment_intent_data: {
-        metadata,
-      },
+      expand: ['payment_intent'],
     });
+
+    // 4) (Optionnel mais robuste) Dépose aussi sur le PaymentIntent (mêmes clés)
+    if (session?.payment_intent && typeof session.payment_intent === 'object') {
+      const piId = session.payment_intent.id || session.payment_intent;
+      try {
+        await stripe.paymentIntents.update(piId, { metadata });
+      } catch (e) {
+        console.warn('PI metadata update failed (non-blocking):', e?.message || e);
+      }
+    }
 
     return res.status(200).json({ id: session.id, url: session.url });
   } catch (err) {
