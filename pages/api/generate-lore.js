@@ -16,10 +16,11 @@ CONSTRAINTS:
 - The prompt must always generate exactly 10 lines of dialogue. Alternate lines: Wolf, Lamb, Wolf, Lamb, ...
 - Absolutely NO narration, only their spoken lines.
 - Keep the tone poetic, ominous, and mythic — like Kindred voice lines.
-- Include at least one real RUNETERRA ally and one real RUNETERRA enemy that make sense for ${pseudo}’s story (use actual LoL champions/factions).
+- Include at least one real RUNETERRA ally that make sense for ${pseudo}’s story (use actual LoL champions/factions).
 - Do NOT over-explain game mechanics. Keep it legend-like and atmospheric.
-- Use "${genre}" and "${role}" ONLY to color the personality and combat temperament of ${pseudo} (e.g., stoic, cunning, protective), but do not hinge the plot on their role.
+- Use "${genre}" ONLY to color the personality and combat temperament of ${pseudo} (e.g., stoic, cunning, protective), but do not hinge the plot on their role.
 - The story must be clearly original (no copying existing champion lores). It should feel like a whispered rumor the Kindred share about ${pseudo}.
+- The story must be deeply mysterious and bring charisma
 
 OUTPUT LANGUAGE: English.
 OUTPUT FORMAT: Only the dialogue lines, starting with the correct speaker marker:
