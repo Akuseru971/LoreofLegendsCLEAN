@@ -132,65 +132,111 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  // ✅ Fallbacks: state → localStorage → DOM → displayedLore
-  const handleCheckout = async () => {
+ // ...imports, composants, etc. inchangés
+
+// ✅ Fallbacks: state → localStorage → DOM → displayedLore
+const handleCheckout = async () => {
+  try {
+    const stripe = await stripePromise;
+    if (!stripe) {
+      alert('Stripe failed to load on this device.');
+      return;
+    }
+
+    let loreRaw = lore || '';
+    let pseudoToSend = pseudo || '';
+    let genreToSend = genre || '';
+    let roleToSend  = role  || '';
+
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        alert('Stripe failed to load on this device.');
+      if (!loreRaw && typeof window !== 'undefined') {
+        loreRaw = localStorage.getItem('lastLore') || '';
+      }
+      if (!pseudoToSend && typeof window !== 'undefined') {
+        pseudoToSend = localStorage.getItem('lastPseudo') || '';
+      }
+      if (!genreToSend && typeof window !== 'undefined') {
+        genreToSend = localStorage.getItem('lastGenre') || '';
+      }
+      if (!roleToSend && typeof window !== 'undefined') {
+        roleToSend = localStorage.getItem('lastRole') || '';
+      }
+    } catch {}
+
+    // Fallback DOM (exactement le texte affiché)
+    if (!loreRaw) {
+      const domText = loreSpanRef.current?.textContent?.trim() || '';
+      if (domText) {
+        loreRaw = domText.replace(/\s+\n/g, '\n').replace(/\n\s+/g, '\n');
+      }
+    }
+
+    // Dernier filet de sécurité
+    if (!loreRaw && displayedLore) {
+      loreRaw = displayedLore.trim();
+    }
+
+    if (!loreRaw) {
+      alert('Please generate your lore first before purchasing.');
+      return;
+    }
+
+    // 🔒 (optionnel) cache serveur si tu as encore /api/cache-lore
+    await fetch('/api/cache-lore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pseudo: pseudoToSend,
+        genre: genreToSend,
+        role: roleToSend,
+        lore: loreRaw,
+      }),
+    });
+
+    // ✅ ENVOYER *lore* (et pas loreRaw)
+    const resp = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pseudo: pseudoToSend,
+        genre: genreToSend,
+        role: roleToSend,
+        lore: loreRaw,              // <—— clé attendue par l’API
+        // on peut garder ces champs en bonus si tu veux
+        loreRaw,
+        loreDisplay: (displayedLore || '').trim(),
+      }),
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.error('checkout-session error:', data);
+      alert(data?.error || 'Server error creating checkout session.');
+      return;
+    }
+
+    if (data?.id) {
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (!error) return;
+      if (data?.url) {
+        window.location.href = data.url;
         return;
       }
+      alert(error.message || 'Unable to open Stripe Checkout.');
+      return;
+    }
 
-      let loreRaw = lore || '';
-      let pseudoToSend = pseudo || '';
-      let genreToSend = genre || '';
-      let roleToSend  = role  || '';
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
 
-      try {
-        if (!loreRaw && typeof window !== 'undefined') {
-          loreRaw = localStorage.getItem('lastLore') || '';
-        }
-        if (!pseudoToSend && typeof window !== 'undefined') {
-          pseudoToSend = localStorage.getItem('lastPseudo') || '';
-        }
-        if (!genreToSend && typeof window !== 'undefined') {
-          genreToSend = localStorage.getItem('lastGenre') || '';
-        }
-        if (!roleToSend && typeof window !== 'undefined') {
-          roleToSend = localStorage.getItem('lastRole') || '';
-        }
-      } catch {}
-
-      // 👉 Fallback DOM: exactement le texte rendu
-      if (!loreRaw) {
-        const domText = loreSpanRef.current?.textContent?.trim() || '';
-        if (domText) {
-          loreRaw = domText.replace(/\s+\n/g, '\n').replace(/\n\s+/g, '\n');
-        }
-      }
-
-      // Dernier filet de sécurité
-      if (!loreRaw && displayedLore) {
-        loreRaw = displayedLore.trim();
-      }
-
-      // 🚫 Garde-fou : ne pas créer de session si vide
-      if (!loreRaw || loreRaw.length === 0) {
-        alert('Please generate your lore first before purchasing.');
-        return;
-      }
-
-      // 🔒 1) Mettre en cache côté serveur via cookie HttpOnly (optionnel mais utile)
-      await fetch('/api/cache-lore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pseudo: pseudoToSend,
-          genre: genreToSend,
-          role: roleToSend,
-          lore: loreRaw,
-        }),
-      });
+    alert('No session returned by server.');
+  } catch (e) {
+    console.error('handleCheckout exception:', e);
+    alert(e?.message || 'Unexpected error starting checkout.');
+  }
+};
 
       // 2) Créer la session — IMPORTANT : on envoie sous la clé "lore"
       const resp = await fetch('/api/checkout-session', {

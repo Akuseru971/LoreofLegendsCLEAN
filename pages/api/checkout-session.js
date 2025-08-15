@@ -16,24 +16,33 @@ export default async function handler(req, res) {
       pseudo = '',
       genre = '',
       role = '',
-      lore = '', // <— IMPORTANT: on lit la clé "lore" envoyée par le front
+      lore = '',
+      loreRaw = '',
+      loreDisplay = '',
     } = req.body || {};
 
-    // Stripe limite la taille des metadata => on découpe par tranches ~450 chars
+    // ✅ Choix le plus fiable envoyé par le front
+    const loreInput =
+      (typeof lore === 'string' && lore.length ? lore : '') ||
+      (typeof loreRaw === 'string' && loreRaw.length ? loreRaw : '') ||
+      (typeof loreDisplay === 'string' && loreDisplay.length ? loreDisplay : '');
+
+    // Stripe metadata ≤ 500 chars/clé
     const chunkSize = 450;
     const metadata = { pseudo, genre, role };
-    if (typeof lore === 'string' && lore.length > 0) {
-      if (lore.length <= chunkSize) {
-        metadata.lore = lore;
+
+    if (loreInput && loreInput.length > 0) {
+      if (loreInput.length <= chunkSize) {
+        metadata.lore = loreInput;
       } else {
         let part = 1;
-        for (let i = 0; i < lore.length; i += chunkSize) {
-          metadata[`lore_${part}`] = lore.slice(i, i + chunkSize);
+        for (let i = 0; i < loreInput.length; i += chunkSize) {
+          metadata[`lore_${part}`] = loreInput.slice(i, i + chunkSize);
           part++;
         }
         metadata.lore_parts = String(part - 1);
       }
-      metadata.lore_len = String(lore.length);
+      metadata.lore_len = String(loreInput.length);
     } else {
       metadata.lore = '';
       metadata.lore_len = '0';
@@ -45,9 +54,7 @@ export default async function handler(req, res) {
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/`,
-      // ➜ on met bien les metadata sur la session
       metadata,
-      // ➜ et on DUPLIQUE aussi sur le PaymentIntent (très utile côté webhook)
       payment_intent_data: {
         metadata,
       },
