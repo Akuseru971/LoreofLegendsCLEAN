@@ -1,13 +1,16 @@
 // pages/api/webhook.js
 import Stripe from 'stripe';
-import nodemailer from 'nodemailer';
 
+// ⚠️ Stripe a besoin du RAW body pour vérifier la signature
 export const config = {
   api: { bodyParser: false },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+});
 
+// Utilitaire: récupérer le raw body du stream Node
 async function getRawBody(req) {
   return await new Promise((resolve, reject) => {
     const chunks = [];
@@ -17,29 +20,16 @@ async function getRawBody(req) {
   });
 }
 
-function joinLoreFromChunks(meta = {}) {
-  // reconstruit lore à partir de lore_1, lore_2, ...
-  const parts = [];
-  const keys = Object.keys(meta).filter((k) => /^lore_\d+$/.test(k));
-  keys.sort((a, b) => {
-    const ai = parseInt(a.split('_')[1], 10);
-    const bi = parseInt(b.split('_')[1], 10);
-    return ai - bi;
-  });
-  for (const k of keys) parts.push(meta[k] || '');
-  if (parts.length) return parts.join('');
-  // fallback legacy
-  if (typeof meta.lore === 'string') return meta.lore;
-  return '';
-}
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method not allowed');
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method not allowed');
+  }
 
   let event;
   try {
     const rawBody = await getRawBody(req);
     const signature = req.headers['stripe-signature'];
+
     event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -50,73 +40,44 @@ export default async function handler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'checkout.session.completed') {
-    // ⚠️ expand pour récupérer payment_intent.metadata
-    const fullSession = await stripe.checkout.sessions.retrieve(
-      event.data.object.id,
-      { expand: ['payment_intent'] }
-    );
+  // On loggue proprement l’événement (et seulement ça)
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
 
-    const s = fullSession;
-    const metaSession = s.metadata || {};
-    const metaPI = (s.payment_intent && s.payment_intent.metadata) || {};
+        // Quelques infos utiles à tracer
+        const summary = {
+          session_id: session.id,
+          paid: session.payment_status === 'paid',
+          email: session?.customer_details?.email || null,
+          pseudo: session?.metadata?.pseudo || null,
+          lore_len: Number(session?.metadata?.lore_len || 0),
+          has_lore: Boolean(session?.metadata?.lore || session?.metadata?.lore_1),
+          created: session.created,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          livemode: session.livemode,
+        };
 
-    const pseudo = metaSession.pseudo || metaPI.pseudo || 'Unknown Summoner';
-    const genre = metaSession.genre || metaPI.genre || '';
-    const role  = metaSession.role  || metaPI.role  || '';
-    const customerEmail = s.customer_details?.email;
+        console.log('✅ checkout.session.completed', summary);
 
-    // reconstruit depuis les CHUNKS (session puis PI)
-    let lore = joinLoreFromChunks(metaSession);
-    if (!lore) lore = joinLoreFromChunks(metaPI);
-
-    // transport SMTP
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    // mail admin
-    try {
-      await transporter.sendMail({
-        from: process.env.SENDER_EMAIL,
-        to: process.env.ADMIN_EMAIL,
-        subject: `New Lore Purchase - ${pseudo}`,
-        text:
-`Pseudo: ${pseudo}
-Email client: ${customerEmail || 'unknown'}
-Genre: ${genre}
-Role: ${role}
-
-Lore (len=${lore?.length || 0}):
-${lore || '(empty)'}
-`,
-      });
-    } catch (err) {
-      console.error('❌ Envoi mail admin échoué:', err);
-    }
-
-    // mail client
-    if (customerEmail) {
-      try {
-        await transporter.sendMail({
-          from: process.env.SENDER_EMAIL,
-          to: customerEmail,
-          subject: `Your personalized Lore - ${pseudo}`,
-          text: lore && lore.length
-            ? `Here is your lore:\n\n${lore}\n\nThanks for your support!`
-            : `We received your order but the lore text was empty.\nIf this seems wrong, please reply to this email.`,
-        });
-      } catch (err) {
-        console.error('❌ Envoi mail client échoué:', err);
+        // 👉 Ici, pas d’email. Si tu veux persister en base, c’est l’endroit.
+        break;
       }
-    }
-  }
 
-  res.json({ received: true });
+      default:
+        // Pour débogage des autres events éventuels
+        console.log(`ℹ️ Unhandled event type: ${event.type}`);
+        break;
+    }
+
+    // Stripe est content si on répond 200 rapidement
+    return res.json({ received: true });
+  } catch (err) {
+    console.error('❌ Webhook handler error:', err);
+    // Répondre 200 quand même pour éviter des retries en boucle,
+    // ou 500 si tu veux que Stripe retente.
+    return res.status(200).json({ received: true, note: 'logged only' });
+  }
 }
