@@ -248,6 +248,19 @@ export default function Home() {
         </video>
         <div className="absolute top-0 left-0 w-full h-full bg-black/60 z-10" />
 
+        {/* Logo fixe en haut à gauche (retour accueil) */}
+        <div className="fixed top-4 left-4 z-[1000000]">
+          <Link href="/" passHref>
+            <Image
+              src="/logo.png"
+              alt="Lore of Legends"
+              width={56}
+              height={56}
+              className="cursor-pointer rounded-full ring-1 ring-white/20 hover:ring-white/40 hover:scale-105 transition"
+            />
+          </Link>
+        </div>
+
         <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
           <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-2" />
 
