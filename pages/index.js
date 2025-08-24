@@ -1,3 +1,12 @@
+// pages/index.js (imports du haut)
+import { useState, useEffect, useMemo, useRef } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import Script from 'next/script';
+import Link from 'next/link';          // ← AJOUT ICI
+import { loadStripe } from '@stripe/stripe-js';
+import * as ReactDOM from 'react-dom';
+
 {/* Mini-nav sous le logo */}
 <div className="mb-6">
   <Link
