@@ -10,4 +10,5 @@ export const galleryItems = [
   { id: "oogieboogie",name: "OogieBoogie",image: "/champions/OogieBoogie.jpg" },
   { id: "rowan",      name: "Rowan",      image: "/champions/Rowan.jpg" },
   { id: "clovix",     name: "Clovix",     image: "/champions/Clovix.jpg" },
+  { id: "clovix",     name: "Himmel",     image: "/champions/Himmel.jpg" },
  ];
