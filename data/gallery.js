@@ -13,7 +13,6 @@ export const galleryItems = [
   { id: "Shinigami1tank",     name: "Shinigami1tank",     image: "/champions/Shinigami1tank.jpg" },
   { id: "Akuseru",     name: "Akuseru",     image: "/champions/Akuseru.jpg" },
   { id: "Gabybixx",     name: "Gabybixx",     image: "/champions/Gabybixx.jpg" },
-  { id: "Kintesence",     name: "Kintesence",     image: "/champions/Kintesence.jpg" },
   { id: "Soukoupaks",     name: "Soukoupaks",     image: "/champions/Soukoupaks.jpg" },
 
  ];
