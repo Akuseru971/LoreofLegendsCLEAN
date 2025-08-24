@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Script from 'next/script';
+import Link from 'next/link';
 import { loadStripe } from '@stripe/stripe-js';
 import * as ReactDOM from 'react-dom';
 
@@ -242,7 +243,7 @@ export default function Home() {
 
   return (
     <>
-      {/* ⚠️ IMPORTANT: pas d'overflow-hidden ici, pour éviter les clips/freeze */}
+      {/* ⚠️ pas d'overflow-hidden pour éviter les clips/freeze */}
       <div className="relative min-h-screen w-full text-white font-serif">
         <Head><title>Lore of Legends</title></Head>
         <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
@@ -250,9 +251,23 @@ export default function Home() {
           <source src="/background.mp4" type="video/mp4" />
         </video>
         <div className="absolute top-0 left-0 w-full h-full bg-black/60 z-10" />
+
         <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
-          <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-4" />
+          {/* Logo */}
+          <Image src="/logo.png" alt="Logo" width={160} height={160} className="mb-2" />
+
+          {/* Mini-nav sous le logo */}
+          <div className="mb-6">
+            <Link
+              href="/gallery"
+              className="inline-block bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-4 py-2 text-sm font-medium"
+            >
+              ➜ Open Gallery
+            </Link>
+          </div>
+
           <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
+
           <div className="bg-black/40 p-6 rounded-lg w-15 max-w-sm space-y-4">
             <select value={genre} onChange={(e) => setGenre(e.target.value)} className="h-14 p-3 rounded-[18px] w-full bg-white text-black">
               <option>Man</option><option>Woman</option><option>Creature</option>
@@ -275,9 +290,17 @@ export default function Home() {
           {!lore && <TopLoreCarousel items={topLore} />}
 
           {lore && (
-            <div className="mt-24 w-fit flex flex-col items-center justify-center animate-fade-in">
-              <div className="lore-box bg-black text-white p-6 rounded-lg w-fit text-center text-md leading-relaxed shadow-lg mb-6">
-                <span ref={loreSpanRef} className="whitespace-pre-line">{displayedLore}</span>
+            <div className="mt-24 w-full flex flex-col items-center justify-center animate-fade-in px-4">
+              <div
+                className="lore-box bg-black text-white p-4 sm:p-6 rounded-lg
+                           w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl
+                           text-left leading-relaxed shadow-lg mb-6
+                           box-border break-words min-w-0"
+                style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', hyphens: 'auto' }}
+              >
+                <span ref={loreSpanRef} className="whitespace-pre-line break-words">
+                  {displayedLore}
+                </span>
               </div>
               <button
                 className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-[18px]"
@@ -291,7 +314,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Popup via Portal -> <body>, z-index énorme, aucun parent ne peut la clipper */}
+      {/* Popup via Portal */}
       {showPopup && !isIOS && (
         <PopupPortal>
           <div
@@ -301,9 +324,7 @@ export default function Home() {
             <div className="w-[92vw] max-w-md md:max-w-xl p-2 sm:p-4">
               <div
                 className="relative bg-gray-900 text-white rounded-lg shadow-xl"
-                style={{
-                  marginTop: 'max(env(safe-area-inset-top), 6px)',
-                }}
+                style={{ marginTop: 'max(env(safe-area-inset-top), 6px)' }}
                 role="dialog"
                 aria-modal="true"
               >
