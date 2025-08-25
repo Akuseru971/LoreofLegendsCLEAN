@@ -75,6 +75,7 @@ export default function Home() {
   const [displayedLore, setDisplayedLore] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState('bundle'); // 'bundle' | 'image_only'
   const loreSpanRef = useRef(null);
 
   const isIOS = typeof navigator !== 'undefined' && /iP(hone|ad|od)/.test(navigator.userAgent);
@@ -122,7 +123,8 @@ export default function Home() {
     return () => clearInterval(it);
   }, [lore]);
 
-  const handleCheckout = async () => {
+  // === UPDATED: accepts productType ('bundle' | 'image_only') ===
+  const handleCheckout = async (productType = 'bundle') => {
     try {
       const stripe = await stripePromise;
       if (!stripe) {
@@ -159,21 +161,23 @@ export default function Home() {
         loreRaw = displayedLore.trim();
       }
 
-      if (!loreRaw) {
+      // For image-only we still allow empty lore (if you prefer, enforce it)
+      if (productType !== 'image_only' && !loreRaw) {
         alert('Please generate your lore first before purchasing.');
         return;
       }
 
       const b64 = typeof window !== 'undefined'
-        ? btoa(unescape(encodeURIComponent(loreRaw)))
+        ? btoa(unescape(encodeURIComponent(loreRaw || '')))
         : '';
 
       const payload = {
         pseudo: pseudoToSend,
         genre: genreToSend,
         role: roleToSend,
-        lore: loreRaw,
+        lore: loreRaw || '',
         loreDisplay: (displayedLore || '').trim(),
+        productType, // NEW
       };
 
       console.log('Checkout payload (front):', {
@@ -276,7 +280,33 @@ export default function Home() {
             </Link>
           </div>
 
-          <h1 className="text-3xl font-bold mb-6 text-white">Generate your Runeterra Lore</h1>
+          <h1 className="text-3xl font-bold mb-4 text-white">Generate your Runeterra Lore</h1>
+
+          {/* Optional small price chooser */}
+          <div className="mb-4 text-sm flex gap-2">
+            <button
+              onClick={() => setSelectedProduct('bundle')}
+              className={`px-3 py-1 rounded-full border ${
+                selectedProduct === 'bundle'
+                  ? 'bg-white/20 border-white'
+                  : 'bg-white/10 border-white/30 hover:bg-white/20'
+              }`}
+              title="Lore Video + Image (8,99€)"
+            >
+              Lore + Image · 8,99€
+            </button>
+            <button
+              onClick={() => setSelectedProduct('image_only')}
+              className={`px-3 py-1 rounded-full border ${
+                selectedProduct === 'image_only'
+                  ? 'bg-white/20 border-white'
+                  : 'bg-white/10 border-white/30 hover:bg-white/20'
+              }`}
+              title="Image Only (2,99€)"
+            >
+              Image only · 2,99€
+            </button>
+          </div>
 
           <div className="bg-black/40 p-6 rounded-lg w-15 max-w-sm space-y-4">
             <select value={genre} onChange={(e) => setGenre(e.target.value)} className="h-14 p-3 rounded-[18px] w-full bg-white text-black">
@@ -341,9 +371,22 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                <div className="px-4 pb-4 pt-2">
-                  <button onClick={handleCheckout} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg">
-                    Purchase your Lore Video
+
+                {/* Two CTAs */}
+                <div className="px-4 pb-4 pt-2 space-y-2">
+                  <button
+                    onClick={() => handleCheckout('bundle')}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+                    title="Lore Video + Image (8,99€)"
+                  >
+                    Buy Lore Video + Image · 8,99€
+                  </button>
+                  <button
+                    onClick={() => handleCheckout('image_only')}
+                    className="w-full bg-emerald-600/90 hover:bg-emerald-700 text-white font-semibold py-3 rounded-[18px]"
+                    title="Image Only (2,99€)"
+                  >
+                    Buy Image Only · 2,99€
                   </button>
                 </div>
               </div>

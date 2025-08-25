@@ -4,9 +4,7 @@ import Stripe from 'stripe';
 
 function splitIntoChunks(str, size = 450) {
   const chunks = [];
-  for (let i = 0; i < str.length; i += size) {
-    chunks.push(str.slice(i, i + size));
-  }
+  for (let i = 0; i < str.length; i += size) chunks.push(str.slice(i, i + size));
   return chunks;
 }
 
@@ -17,9 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
 
     const {
       pseudo = '',
@@ -28,9 +24,20 @@ export default async function handler(req, res) {
       lore = '',
       loreRaw = '',
       loreDisplay = '',
+      productType = 'bundle', // NEW: 'bundle' | 'image_only'
     } = req.body || {};
 
-    // 1) Deux sources possibles: body ET/OU header base64
+    // pick correct price by product type
+    const priceId =
+      productType === 'image_only'
+        ? process.env.STRIPE_PRICE_IMAGE_ONLY
+        : (process.env.STRIPE_PRICE_LORE_BUNDLE || process.env.STRIPE_PRICE_ID); // fallback to old var if present
+
+    if (!priceId) {
+      return res.status(400).json({ error: 'Stripe price not configured for selected product.' });
+    }
+
+    // 1) Two possible lore sources: body AND/OR base64 header
     let headerLore = '';
     try {
       const b64 = req.headers['x-lore-b64'];
@@ -41,8 +48,9 @@ export default async function handler(req, res) {
 
     let fullLore = (lore || loreRaw || headerLore || '').toString().trim();
 
-    // Debug serveur (visible dans logs Vercel)
+    // Server debug (Vercel logs)
     console.log('[checkout-session] lengths:', {
+      productType,
       bodyLoreLen: (lore || '').length,
       loreRawLen: (loreRaw || '').length,
       headerLoreLen: (headerLore || '').length,
@@ -50,7 +58,8 @@ export default async function handler(req, res) {
       head: fullLore.slice(0, 80),
     });
 
-    const metadata = { pseudo, genre, role };
+    // Build metadata (Stripe limits 50 keys, 500 chars per value approx.)
+    const metadata = { pseudo, genre, role, product_type: productType };
     const chunks = fullLore ? splitIntoChunks(fullLore, 450) : [];
 
     if (chunks.length > 0) {
@@ -65,17 +74,24 @@ export default async function handler(req, res) {
       metadata.lore_len = '0';
     }
 
+    // URLs (fallbacks)
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (req.headers.origin && typeof req.headers.origin === 'string'
+        ? req.headers.origin
+        : `https://${req.headers.host}`);
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/`,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/`,
       metadata,
       expand: ['payment_intent'],
     });
 
-    // Duplique sur le PI aussi (robuste pour le webhook)
+    // Duplicate metadata onto PI for webhook robustness
     if (session?.payment_intent && typeof session.payment_intent === 'object') {
       const piId = session.payment_intent.id || session.payment_intent;
       try {
