@@ -72,13 +72,13 @@ export default function Preview() {
           onClick={() => handleCheckout("video")}
           className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
         >
-          Purchase Lore Video (8.99€)
+          Purchase My Lore Video + Splash art (8.99€)
         </button>
         <button
           onClick={() => handleCheckout("image")}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-[18px] text-lg"
         >
-          Purchase Lore Image (2.99€)
+          Purchase My Champion Splash Art (2.99€)
         </button>
       </div>
     </div>
