@@ -18,7 +18,6 @@ export default function Preview() {
       const p = url.searchParams.get('pseudo') || '';
       setPseudo(p);
 
-      // best-effort restore from localStorage (optional)
       const lastLore = localStorage.getItem('lastLore') || '';
       const lastGenre = localStorage.getItem('lastGenre') || '';
       const lastRole = localStorage.getItem('lastRole') || '';
@@ -37,20 +36,19 @@ export default function Preview() {
         return;
       }
 
-      // we still send the lore if we have it (even for image_only)
       const payload = {
         pseudo,
         genre,
         role,
         lore,
         loreDisplay: (displayedLore || '').trim(),
-        productType, // 👈 crucial: tell server which price to use
+        productType,
       };
 
-      // extra channel for long lore
-      const b64 = typeof window !== 'undefined'
-        ? btoa(unescape(encodeURIComponent(lore || '')))
-        : '';
+      const b64 =
+        typeof window !== 'undefined'
+          ? btoa(unescape(encodeURIComponent(lore || '')))
+          : '';
 
       const resp = await fetch('/api/checkout-session', {
         method: 'POST',
@@ -104,18 +102,8 @@ export default function Preview() {
           </div>
         ) : null}
 
-        {/* TikTok / Video preview (your existing embed) */}
-        <div className="mx-auto max-w-2xl rounded-lg overflow-hidden mb-8">
-          <iframe
-            src="https://www.tiktok.com/embed/v2/7529586683185040662"
-            className="w-full h-[58vh]"
-            allow="autoplay; fullscreen; clipboard-write"
-            allowFullScreen
-          />
-        </div>
-
-        {/* Two clear CTAs */}
-        <div className="mx-auto max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ✅ Boutons remontés au-dessus de la vidéo */}
+        <div className="mx-auto max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <button
             onClick={() => startCheckout('bundle')}
             className="w-full rounded-[18px] bg-blue-600 hover:bg-blue-700 font-bold py-3"
@@ -129,6 +117,16 @@ export default function Preview() {
           >
             Get Image Only (€2.99)
           </button>
+        </div>
+
+        {/* TikTok / Video preview */}
+        <div className="mx-auto max-w-2xl rounded-lg overflow-hidden">
+          <iframe
+            src="https://www.tiktok.com/embed/v2/7529586683185040662"
+            className="w-full h-[58vh]"
+            allow="autoplay; fullscreen; clipboard-write"
+            allowFullScreen
+          />
         </div>
       </div>
     </>
