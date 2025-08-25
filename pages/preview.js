@@ -1,95 +1,85 @@
-import Head from 'next/head';
-import Script from 'next/script';
-import { useRouter } from 'next/router';
-import { loadStripe } from '@stripe/stripe-js';
-import { useCallback } from 'react';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// pages/preview.js
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
 export default function Preview() {
   const router = useRouter();
-  const { pseudo = '' } = router.query;
+  const { pseudo = "" } = router.query;
 
-  const handleCheckout = useCallback(async () => {
+  const [displayedLore, setDisplayedLore] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const lastLore = localStorage.getItem("lastLore") || "";
+      setDisplayedLore(lastLore);
+    }
+  }, []);
+
+  const handleCheckout = async (mode) => {
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        alert('Stripe failed to load on this device.');
+      const loreRaw =
+        displayedLore || localStorage.getItem("lastLore") || "";
+
+      if (!loreRaw) {
+        alert("Please generate your lore first before purchasing.");
         return;
       }
-      const resp = await fetch('/api/checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo }),
+
+      const payload = {
+        pseudo: pseudo || localStorage.getItem("lastPseudo") || "",
+        genre: localStorage.getItem("lastGenre") || "",
+        role: localStorage.getItem("lastRole") || "",
+        lore: loreRaw,
+      };
+
+      const resp = await fetch("/api/checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          mode, // "video" ou "image"
+        }),
       });
-      const data = await resp.json();
+
+      const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        alert(data?.error || 'Server error creating checkout session.');
+        console.error("checkout-session error:", data);
+        alert(data?.error || "Server error creating checkout session.");
         return;
       }
-      if (data?.id) {
-        const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-        if (!error) return;
-        if (data?.url) {
-          window.location.href = data.url;
-          return;
-        }
-        alert(error.message || 'Unable to open Stripe Checkout.');
-        return;
-      }
+
       if (data?.url) {
         window.location.href = data.url;
-        return;
+      } else {
+        alert("No checkout URL received.");
       }
-      alert('No session returned by server.');
     } catch (e) {
-      alert('Unexpected error starting checkout.');
+      console.error("handleCheckout exception:", e);
+      alert(e?.message || "Unexpected error.");
     }
-  }, [pseudo]);
+  };
 
   return (
-    <div className="min-h-screen w-full bg-black text-white">
-      <Head>
-        <title>Your Lore Preview</title>
-        {/* Force le bon viewport sur iOS */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-      </Head>
-      <Script src="https://js.stripe.com/v3" strategy="afterInteractive" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white px-4">
+      <h1 className="text-2xl font-bold mb-6">Your Lore Preview</h1>
+      <div className="bg-gray-900 p-4 rounded-lg max-w-xl w-full mb-6">
+        <pre className="whitespace-pre-wrap">{displayedLore}</pre>
+      </div>
 
-      <div className="max-w-xl mx-auto px-4 pt-safe pb-safe">
-        <header className="py-3 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="text-white/80 hover:text-white"
-            aria-label="Back"
-          >
-            ← Back
-          </button>
-          <h1 className="text-lg font-bold">Your Lore is ready</h1>
-          <span />
-        </header>
-
-        <main>
-          <div className="rounded overflow-hidden mb-4">
-            <iframe
-              src="https://www.tiktok.com/embed/v2/7529586683185040662"
-              className="w-full h-[55vh] rounded"
-              allow="autoplay; fullscreen; clipboard-write"
-              allowFullScreen
-            />
-          </div>
-
-          <button
-            onClick={handleCheckout}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
-          >
-            Purchase your Lore Video
-          </button>
-        </main>
-
-        <footer className="py-6 text-center text-white/60 text-sm">
-          Pseudo: {pseudo || '—'}
-        </footer>
+      {/* Deux boutons distincts */}
+      <div className="space-y-4 w-full max-w-sm">
+        <button
+          onClick={() => handleCheckout("video")}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-[18px] text-lg"
+        >
+          Purchase Lore Video (8.99€)
+        </button>
+        <button
+          onClick={() => handleCheckout("image")}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-[18px] text-lg"
+        >
+          Purchase Lore Image (2.99€)
+        </button>
       </div>
     </div>
   );
