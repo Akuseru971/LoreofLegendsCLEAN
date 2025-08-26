@@ -108,14 +108,14 @@ export default function Preview() {
             onClick={() => startCheckout('bundle')}
             className="w-full rounded-[18px] bg-blue-600 hover:bg-blue-700 font-bold py-3"
           >
-            Get Lore + Image (€8.99)
+            Get Lore + Image
           </button>
 
           <button
             onClick={() => startCheckout('image_only')}
             className="w-full rounded-[18px] bg-green-600 hover:bg-green-700 font-bold py-3"
           >
-            Get Image Only (€2.99)
+            Get Image Only
           </button>
         </div>
 
